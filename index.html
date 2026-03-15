@@ -1130,6 +1130,12 @@
       await refreshCartCount();
     }
 
+    function forceReloadToStorefront(reason) {
+      // Intentional full reload: static HTML + Supabase auth can leave storefront state stale after auth changes.
+      setActiveView('store', { reason });
+      window.location.reload();
+    }
+
     async function handleSignUp() {
       setCartMessage('');
       const email = authEmail.value.trim();
@@ -1163,8 +1169,9 @@
       }
       console.log('[app] login success', { email });
       await refreshUser();
-      await loadProducts({ reason: 'login' });
-      if (currentUser) setActiveView('store', { reason: 'login' });
+      if (currentUser) {
+        forceReloadToStorefront('login');
+      }
     }
 
     async function handleLogOut() {
@@ -1172,10 +1179,7 @@
       await supabase.auth.signOut();
       console.log('[app] logout success');
       await refreshUser();
-      await loadProducts({ reason: 'logout' });
-      if (!storefrontView.classList.contains('hidden')) {
-        setActiveView('store', { reason: 'logout' });
-      }
+      forceReloadToStorefront('logout');
     }
 
     signupBtn.addEventListener('click', handleSignUp);
@@ -1187,18 +1191,7 @@
       currentUser = session?.user || null;
       updateAuthUI(currentUser);
       refreshCartCount();
-      loadProducts({ reason: 'auth-change' })
-        .then(() => {
-          if (!storefrontView.classList.contains('hidden')) {
-            renderStorefront({ reason: 'auth-change' });
-          }
-        })
-        .catch(error => {
-          console.error('[app] auth-change product load error', error);
-          if (!storefrontView.classList.contains('hidden')) {
-            productGrid.innerHTML = `<div class="auth-status">No se pudieron cargar los productos</div>`;
-          }
-        });
+      // Avoid partial re-renders here; login/logout handlers force a full reload for reliable storefront state.
     });
 
     function updateDetailSizes(product) {
