@@ -660,6 +660,10 @@
     let previewObjectUrl = '';
     let existingImageUrl = '';
 
+    function isAuthRelatedReason(reason) {
+      return ['login', 'logout', 'signup', 'auth-change'].includes(reason);
+    }
+
     function setActiveView(view, { reason = 'view-change' } = {}) {
       const isStore = view === 'store';
       const isAdmin = view === 'admin';
@@ -672,7 +676,13 @@
       storeBtn.classList.toggle('active', isStore);
       adminBtn.classList.toggle('active', isAdmin);
       if (isStore) {
-        renderStorefront({ reason });
+        console.log('[app] navigating to storefront', { reason });
+        ensureProductsLoaded({ reason: `${reason}-view`, force: isAuthRelatedReason(reason) })
+          .then(() => renderStorefront({ reason }))
+          .catch(error => {
+            console.error('[app] storefront render error', error);
+            productGrid.innerHTML = `<div class="auth-status">No se pudieron cargar los productos</div>`;
+          });
       }
     }
 
@@ -753,6 +763,7 @@
     }
 
     async function loadProducts({ reason = 'manual' } = {}) {
+      console.log('[app] loadProducts called', { reason });
       console.log('[app] product load start', { reason });
       productsLoadState.status = 'loading';
       productsLoadState.errorMessage = '';
@@ -814,22 +825,26 @@
     }
 
     function renderProducts({ reason = 'manual' } = {}) {
+      console.log('[app] renderProducts called', { reason });
       console.log('[app] product render start', { reason, status: productsLoadState.status });
       const query = searchInput.value.toLowerCase();
       const filtered = products.filter(p => (p.title || '').toLowerCase().includes(query));
       if (filtered.length === 0) {
         if (productsLoadState.status === 'loading') {
           productGrid.innerHTML = `<div class="auth-status">Cargando productos...</div>`;
+          console.log('[app] products count rendered', { count: 0, loading: true });
           console.log('[app] product render end', { count: 0, loading: true });
           return;
         }
         if (productsLoadState.status === 'error') {
           productGrid.innerHTML = `<div class="auth-status">${productsLoadState.errorMessage || 'No se pudieron cargar los productos'}</div>`;
+          console.log('[app] products count rendered', { count: 0, error: true });
           console.log('[app] product render end', { count: 0, error: true });
           return;
         }
         if (products.length === 0) {
           productGrid.innerHTML = `<div class="auth-status">No hay productos disponibles</div>`;
+          console.log('[app] products count rendered', { count: 0, empty: true });
           console.log('[app] product render end', { count: 0, empty: true });
           return;
         }
@@ -848,6 +863,7 @@
           </div>
         </article>
       `).join('');
+      console.log('[app] products count rendered', { count: filtered.length, error: false });
       console.log('[app] product render end', { count: filtered.length, error: false });
     }
 
@@ -1150,6 +1166,9 @@
       await supabase.auth.signOut();
       console.log('[app] logout success');
       await refreshUser();
+      if (!storefrontView.classList.contains('hidden')) {
+        setActiveView('store', { reason: 'logout' });
+      }
     }
 
     signupBtn.addEventListener('click', handleSignUp);
@@ -1161,10 +1180,18 @@
       currentUser = session?.user || null;
       updateAuthUI(currentUser);
       refreshCartCount();
-      ensureProductsLoaded({ reason: 'auth-change' });
-      if (!storefrontView.classList.contains('hidden')) {
-        renderStorefront({ reason: 'auth-change' });
-      }
+      ensureProductsLoaded({ reason: 'auth-change', force: true })
+        .then(() => {
+          if (!storefrontView.classList.contains('hidden')) {
+            renderStorefront({ reason: 'auth-change' });
+          }
+        })
+        .catch(error => {
+          console.error('[app] auth-change product load error', error);
+          if (!storefrontView.classList.contains('hidden')) {
+            productGrid.innerHTML = `<div class="auth-status">No se pudieron cargar los productos</div>`;
+          }
+        });
     });
 
     function updateDetailSizes(product) {
