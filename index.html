@@ -17,6 +17,10 @@
       --shadow: 0 12px 30px rgba(0,0,0,0.12);
     }
     * { box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      overflow-x: hidden;
+    }
     body {
       margin: 0;
       font-family: "Space Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -36,6 +40,7 @@
       margin: 0 auto;
       padding: 16px 20px;
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 16px;
     }
@@ -50,6 +55,9 @@
       font-size: 1.2rem;
       letter-spacing: 0.06em;
       text-transform: uppercase;
+      margin-right: auto;
+      min-width: 0;
+      max-width: 100%;
     }
     .pill {
       padding: 6px 10px;
@@ -58,7 +66,6 @@
       border: 1px solid var(--border);
       color: var(--muted);
       font-size: 0.75rem;
-      margin-left: auto;
     }
     .container {
       max-width: 1200px;
@@ -66,7 +73,6 @@
       padding: 28px 20px 80px;
     }
     .header-actions {
-      margin-left: auto;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -98,6 +104,7 @@
     .nav {
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
       margin-bottom: 20px;
     }
     .nav button {
@@ -215,7 +222,7 @@
       gap: 8px;
     }
     .price {
-      color: var(--accent);
+      color: var(--text);
       font-weight: 700;
       letter-spacing: 0.05em;
     }
@@ -293,13 +300,49 @@
       padding: 22px;
       align-items: start;
     }
+    .detail-gallery {
+      position: relative;
+      width: 100%;
+      min-width: 0;
+    }
+    .detail-gallery-track {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: #fafaf7;
+      -webkit-overflow-scrolling: touch;
+    }
+    .detail-gallery-track::-webkit-scrollbar { display: none; }
+    .detail-gallery-slide {
+      flex: 0 0 100%;
+      scroll-snap-align: start;
+    }
     .detail-image {
       width: 100%;
       height: 420px;
       object-fit: cover;
-      border-radius: 14px;
-      border: 1px solid var(--border);
+      display: block;
     }
+    .detail-gallery-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.9);
+      border: 1px solid var(--border);
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      font-size: 1.1rem;
+    }
+    .detail-gallery-nav.prev { left: 10px; }
+    .detail-gallery-nav.next { right: 10px; }
+    .detail-gallery-nav.hidden { display: none; }
     .detail-meta {
       display: grid;
       gap: 12px;
@@ -470,6 +513,13 @@
     @media (max-width: 640px) {
       .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
       .image-wrap { height: 200px; }
+      .header-inner { gap: 10px; }
+      .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+      }
+      .pill { order: 3; }
     }
   </style>
 </head>
@@ -513,7 +563,11 @@
       <div id="product-detail" class="detail-view hidden">
         <div class="section-title">Detalle del producto</div>
         <div class="detail-card">
-          <img id="detail-image" class="detail-image" src="" alt="Imagen del producto" />
+          <div class="detail-gallery">
+            <div id="detail-gallery-track" class="detail-gallery-track"></div>
+            <button id="detail-gallery-prev" class="detail-gallery-nav prev" type="button" aria-label="Imagen anterior">‹</button>
+            <button id="detail-gallery-next" class="detail-gallery-nav next" type="button" aria-label="Imagen siguiente">›</button>
+          </div>
           <div class="detail-meta">
             <h2 id="detail-title" class="detail-title"></h2>
             <div id="detail-price" class="price"></div>
@@ -557,6 +611,20 @@
 
             <label for="imageUrl">URL de imagen (opcional)</label>
             <input id="imageUrl" placeholder="https://..." />
+
+            <label for="extraImageFile1">Imagen extra 1 (subir)</label>
+            <input id="extraImageFile1" type="file" accept="image/*" />
+            <img id="extraImagePreview1" class="image-preview" alt="Image preview extra 1" />
+
+            <label for="extraImageUrl1">URL imagen extra 1 (opcional)</label>
+            <input id="extraImageUrl1" placeholder="https://..." />
+
+            <label for="extraImageFile2">Imagen extra 2 (subir)</label>
+            <input id="extraImageFile2" type="file" accept="image/*" />
+            <img id="extraImagePreview2" class="image-preview" alt="Image preview extra 2" />
+
+            <label for="extraImageUrl2">URL imagen extra 2 (opcional)</label>
+            <input id="extraImageUrl2" placeholder="https://..." />
 
             <label>Stock por talle</label>
             <div class="size-options" id="sizes">
@@ -634,7 +702,9 @@
     const productGrid = document.getElementById('product-grid');
     const adminList = document.getElementById('admin-list');
     const searchInput = document.getElementById('search');
-    const detailImage = document.getElementById('detail-image');
+    const detailGalleryTrack = document.getElementById('detail-gallery-track');
+    const detailGalleryPrev = document.getElementById('detail-gallery-prev');
+    const detailGalleryNext = document.getElementById('detail-gallery-next');
     const detailTitle = document.getElementById('detail-title');
     const detailPrice = document.getElementById('detail-price');
     const detailDescription = document.getElementById('detail-description');
@@ -667,6 +737,12 @@
     const imageField = document.getElementById('imageUrl');
     const imageFileField = document.getElementById('imageFile');
     const imagePreview = document.getElementById('imagePreview');
+    const extraImageFile1Field = document.getElementById('extraImageFile1');
+    const extraImageFile2Field = document.getElementById('extraImageFile2');
+    const extraImageField1 = document.getElementById('extraImageUrl1');
+    const extraImageField2 = document.getElementById('extraImageUrl2');
+    const extraImagePreview1 = document.getElementById('extraImagePreview1');
+    const extraImagePreview2 = document.getElementById('extraImagePreview2');
     const sizeContainer = document.getElementById('sizes');
 
     const SIZE_KEYS = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
@@ -683,6 +759,12 @@
     let selectedImageFile = null;
     let previewObjectUrl = '';
     let existingImageUrl = '';
+    let selectedExtraImageFile1 = null;
+    let selectedExtraImageFile2 = null;
+    let previewObjectUrlExtra1 = '';
+    let previewObjectUrlExtra2 = '';
+    let existingExtraImageUrl1 = '';
+    let existingExtraImageUrl2 = '';
 
     function showStoreView({ reason = 'view-change' } = {}) {
       console.log('[app] returning to storefront view', { reason });
@@ -790,12 +872,28 @@
       setStockBySize(null);
       selectedImageFile = null;
       existingImageUrl = '';
+      selectedExtraImageFile1 = null;
+      selectedExtraImageFile2 = null;
+      existingExtraImageUrl1 = '';
+      existingExtraImageUrl2 = '';
       if (previewObjectUrl) {
         URL.revokeObjectURL(previewObjectUrl);
         previewObjectUrl = '';
       }
+      if (previewObjectUrlExtra1) {
+        URL.revokeObjectURL(previewObjectUrlExtra1);
+        previewObjectUrlExtra1 = '';
+      }
+      if (previewObjectUrlExtra2) {
+        URL.revokeObjectURL(previewObjectUrlExtra2);
+        previewObjectUrlExtra2 = '';
+      }
       imagePreview.src = '';
       imagePreview.style.display = 'none';
+      extraImagePreview1.src = '';
+      extraImagePreview1.style.display = 'none';
+      extraImagePreview2.src = '';
+      extraImagePreview2.style.display = 'none';
       setAdminMessage('');
     }
 
@@ -969,11 +1067,7 @@
       console.log('[app] detail render start', { id: product.id });
       activeProductId = product.id;
       console.log('[debug] image_url:', product.image_url);
-      detailImage.src = product.image_url || FALLBACK_IMAGE;
-      detailImage.onerror = () => {
-        detailImage.onerror = null;
-        detailImage.src = FALLBACK_IMAGE;
-      };
+      renderDetailGallery(product);
       detailTitle.textContent = product.title;
       detailPrice.textContent = `$${Number(product.price).toFixed(2)}`;
       detailDescription.textContent = product.description;
@@ -987,7 +1081,13 @@
 
     function renderDetailFallback(message) {
       activeProductId = null;
-      detailImage.src = FALLBACK_IMAGE;
+      detailGalleryTrack.innerHTML = `
+        <div class="detail-gallery-slide">
+          <img class="detail-image" src="${FALLBACK_IMAGE}" alt="Imagen del producto" />
+        </div>
+      `;
+      detailGalleryPrev.classList.add('hidden');
+      detailGalleryNext.classList.add('hidden');
       detailTitle.textContent = 'Producto no disponible';
       detailPrice.textContent = '';
       detailDescription.textContent = message || 'No se pudo cargar el detalle del producto.';
@@ -1032,13 +1132,31 @@
         descField.value = product.description;
         priceField.value = product.price;
         existingImageUrl = product.image_url || '';
+        existingExtraImageUrl1 = product.extra_image_url_1 || '';
+        existingExtraImageUrl2 = product.extra_image_url_2 || '';
         imageField.value = existingImageUrl;
+        extraImageField1.value = existingExtraImageUrl1;
+        extraImageField2.value = existingExtraImageUrl2;
         if (existingImageUrl) {
           imagePreview.src = existingImageUrl;
           imagePreview.style.display = 'block';
         } else {
           imagePreview.src = '';
           imagePreview.style.display = 'none';
+        }
+        if (existingExtraImageUrl1) {
+          extraImagePreview1.src = existingExtraImageUrl1;
+          extraImagePreview1.style.display = 'block';
+        } else {
+          extraImagePreview1.src = '';
+          extraImagePreview1.style.display = 'none';
+        }
+        if (existingExtraImageUrl2) {
+          extraImagePreview2.src = existingExtraImageUrl2;
+          extraImagePreview2.style.display = 'block';
+        } else {
+          extraImagePreview2.src = '';
+          extraImagePreview2.style.display = 'none';
         }
         setStockBySize(normalizeStockBySize(product));
         setActiveView('admin');
@@ -1077,6 +1195,46 @@
       }
     });
 
+    extraImageFile1Field.addEventListener('change', () => {
+      const file = extraImageFile1Field.files && extraImageFile1Field.files[0] ? extraImageFile1Field.files[0] : null;
+      selectedExtraImageFile1 = file;
+      if (previewObjectUrlExtra1) {
+        URL.revokeObjectURL(previewObjectUrlExtra1);
+        previewObjectUrlExtra1 = '';
+      }
+      if (file) {
+        previewObjectUrlExtra1 = URL.createObjectURL(file);
+        extraImagePreview1.src = previewObjectUrlExtra1;
+        extraImagePreview1.style.display = 'block';
+      } else if (existingExtraImageUrl1) {
+        extraImagePreview1.src = existingExtraImageUrl1;
+        extraImagePreview1.style.display = 'block';
+      } else {
+        extraImagePreview1.src = '';
+        extraImagePreview1.style.display = 'none';
+      }
+    });
+
+    extraImageFile2Field.addEventListener('change', () => {
+      const file = extraImageFile2Field.files && extraImageFile2Field.files[0] ? extraImageFile2Field.files[0] : null;
+      selectedExtraImageFile2 = file;
+      if (previewObjectUrlExtra2) {
+        URL.revokeObjectURL(previewObjectUrlExtra2);
+        previewObjectUrlExtra2 = '';
+      }
+      if (file) {
+        previewObjectUrlExtra2 = URL.createObjectURL(file);
+        extraImagePreview2.src = previewObjectUrlExtra2;
+        extraImagePreview2.style.display = 'block';
+      } else if (existingExtraImageUrl2) {
+        extraImagePreview2.src = existingExtraImageUrl2;
+        extraImagePreview2.style.display = 'block';
+      } else {
+        extraImagePreview2.src = '';
+        extraImagePreview2.style.display = 'none';
+      }
+    });
+
     async function uploadProductImage(file) {
       if (!file) return { publicUrl: '', error: null };
       const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
@@ -1102,6 +1260,8 @@
       setAdminMessage('');
 
       let imageUrl = imageField.value.trim();
+      let extraImageUrl1 = extraImageField1.value.trim();
+      let extraImageUrl2 = extraImageField2.value.trim();
       if (selectedImageFile) {
         const uploadResult = await uploadProductImage(selectedImageFile);
         if (uploadResult.error || !uploadResult.publicUrl) {
@@ -1113,12 +1273,36 @@
       } else if (!imageUrl && existingImageUrl) {
         imageUrl = existingImageUrl;
       }
+      if (selectedExtraImageFile1) {
+        const uploadResult = await uploadProductImage(selectedExtraImageFile1);
+        if (uploadResult.error || !uploadResult.publicUrl) {
+          console.error('Failed to upload extra image 1:', uploadResult.error);
+          setAdminMessage(uploadResult.error?.message || 'No se pudo subir la imagen extra 1.', 'error');
+          return;
+        }
+        extraImageUrl1 = uploadResult.publicUrl;
+      } else if (!extraImageUrl1 && existingExtraImageUrl1) {
+        extraImageUrl1 = existingExtraImageUrl1;
+      }
+      if (selectedExtraImageFile2) {
+        const uploadResult = await uploadProductImage(selectedExtraImageFile2);
+        if (uploadResult.error || !uploadResult.publicUrl) {
+          console.error('Failed to upload extra image 2:', uploadResult.error);
+          setAdminMessage(uploadResult.error?.message || 'No se pudo subir la imagen extra 2.', 'error');
+          return;
+        }
+        extraImageUrl2 = uploadResult.publicUrl;
+      } else if (!extraImageUrl2 && existingExtraImageUrl2) {
+        extraImageUrl2 = existingExtraImageUrl2;
+      }
 
       const payload = {
         title: titleField.value.trim(),
         description: descField.value.trim(),
         price: Number(priceField.value),
         image_url: imageUrl,
+        extra_image_url_1: extraImageUrl1 || null,
+        extra_image_url_2: extraImageUrl2 || null,
         stock_by_size: getStockBySize()
       };
 
@@ -1296,9 +1480,65 @@
       updateQuantityLimit(stock);
     });
 
+    function renderDetailGallery(product) {
+      const images = [
+        product?.image_url,
+        product?.extra_image_url_1,
+        product?.extra_image_url_2
+      ].filter(Boolean);
+      if (images.length === 0) {
+        images.push(FALLBACK_IMAGE);
+      }
+      detailGalleryTrack.innerHTML = images.map((url, index) => `
+        <div class="detail-gallery-slide">
+          <img class="detail-image" src="${url}" alt="Imagen del producto ${index + 1}" onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}';" />
+        </div>
+      `).join('');
+      const showNav = images.length > 1;
+      detailGalleryPrev.classList.toggle('hidden', !showNav);
+      detailGalleryNext.classList.toggle('hidden', !showNav);
+      detailGalleryTrack.scrollTo({ left: 0, behavior: 'auto' });
+    }
+
+    function scrollDetailGallery(direction) {
+      const width = detailGalleryTrack.clientWidth;
+      if (!width) return;
+      detailGalleryTrack.scrollBy({ left: direction * width, behavior: 'smooth' });
+    }
+
+    detailGalleryPrev.addEventListener('click', () => scrollDetailGallery(-1));
+    detailGalleryNext.addEventListener('click', () => scrollDetailGallery(1));
+
+    async function fetchLiveStockBySize(productId) {
+      const { data, error } = await supabase
+        .from('products')
+        .select('stock_by_size')
+        .eq('id', productId)
+        .single();
+      if (error) {
+        console.error('Failed to fetch product stock:', error);
+        return null;
+      }
+      return normalizeStockBySize({ stock_by_size: data?.stock_by_size });
+    }
+
     async function saveCartItem(productId, selectedSize, quantity) {
       if (!currentUser?.id) {
         setCartMessage('Iniciá sesión para guardar items en tu carrito.');
+        return;
+      }
+      const liveStock = await fetchLiveStockBySize(productId);
+      if (!liveStock || !selectedSize) {
+        setCartMessage('No hay stock disponible');
+        return;
+      }
+      const available = Number(liveStock[selectedSize] || 0);
+      if (available <= 0) {
+        setCartMessage('No hay stock disponible');
+        return;
+      }
+      if (quantity > available) {
+        setCartMessage('No hay suficiente stock para esa cantidad');
         return;
       }
       const payload = {
