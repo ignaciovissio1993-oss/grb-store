@@ -649,6 +649,11 @@
     const FALLBACK_IMAGE = 'https://placehold.co/800x800?text=Streetwear';
 
     let products = [];
+    let productsLoadState = {
+      status: 'idle',
+      errorMessage: '',
+      inFlight: null
+    };
     let activeProductId = null;
     let currentUser = null;
     let selectedImageFile = null;
@@ -747,8 +752,10 @@
       if (message && type) adminMessage.classList.add(type);
     }
 
-    async function loadProducts() {
-      console.log('Loading products...');
+    async function loadProducts({ reason = 'manual' } = {}) {
+      console.log('[app] product load start', { reason });
+      productsLoadState.status = 'loading';
+      productsLoadState.errorMessage = '';
       const timeoutMs = 5000;
       const timeoutPromise = new Promise(resolve => {
         setTimeout(() => {
@@ -775,12 +782,16 @@
         }
         if (error) {
           console.error('Supabase error:', error);
+          console.error('[app] product load error', error);
           products = data || [];
+          productsLoadState.status = 'error';
+          productsLoadState.errorMessage = 'No se pudieron cargar los productos';
         } else {
           products = data || [];
+          productsLoadState.status = 'success';
+          productsLoadState.errorMessage = '';
+          console.log('[app] product load success', { count: products.length });
         }
-
-        console.log('Products received:', products);
         renderProducts();
         renderAdminList();
         if (activeProductId) {
@@ -790,18 +801,27 @@
           }
         }
       } catch (err) {
-        console.error('Unexpected error:', err);
+        console.error('[app] product load error', err);
         products = [];
+        productsLoadState.status = 'error';
+        productsLoadState.errorMessage = 'No se pudieron cargar los productos';
         renderProducts();
         renderAdminList();
       } finally {
         document.querySelector('#loading')?.classList.add('hidden');
+        console.log('[app] product load end', { status: productsLoadState.status });
       }
     }
 
     function renderProducts() {
+      console.log('[app] product render start');
       const query = searchInput.value.toLowerCase();
       const filtered = products.filter(p => (p.title || '').toLowerCase().includes(query));
+      if (filtered.length === 0 && productsLoadState.status === 'error') {
+        productGrid.innerHTML = `<div class="auth-status">${productsLoadState.errorMessage || 'No se pudieron cargar los productos'}</div>`;
+        console.log('[app] product render end', { count: 0, error: true });
+        return;
+      }
       productGrid.innerHTML = filtered.map(product => `
         <article class="card">
           <button class="product-image-button" data-id="${product.id}" aria-label="Ver detalle de ${product.title}">
@@ -816,6 +836,7 @@
           </div>
         </article>
       `).join('');
+      console.log('[app] product render end', { count: filtered.length, error: false });
     }
 
     function renderStockRows(product) {
@@ -1098,9 +1119,11 @@
     logoutBtn.addEventListener('click', handleLogOut);
 
     supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('[app] auth state change', { event: _event, userId: session?.user?.id || null });
       currentUser = session?.user || null;
       updateAuthUI(currentUser);
       refreshCartCount();
+      ensureProductsLoaded({ reason: 'auth-change' });
     });
 
     function updateDetailSizes(product) {
@@ -1275,11 +1298,25 @@
       await refreshCartCount();
     });
 
-    await refreshUser();
-    if (!window.productsLoaded) {
-      window.productsLoaded = true;
-      await loadProducts();
+    function ensureProductsLoaded({ force = false, reason = 'auto' } = {}) {
+      if (productsLoadState.inFlight) return productsLoadState.inFlight;
+      if (!force && productsLoadState.status === 'success' && products.length > 0) {
+        renderProducts();
+        return Promise.resolve(products);
+      }
+      if (!force && productsLoadState.status === 'loading') {
+        return productsLoadState.inFlight;
+      }
+      productsLoadState.inFlight = loadProducts({ reason })
+        .finally(() => {
+          productsLoadState.inFlight = null;
+        });
+      return productsLoadState.inFlight;
     }
+
+    console.log('[app] init');
+    await refreshUser();
+    await ensureProductsLoaded({ reason: 'init' });
   </script>
 </body>
 </html>
