@@ -140,6 +140,98 @@
       border-color: transparent;
       box-shadow: var(--shadow);
     }
+    .filters-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .filters-row .search {
+      margin-left: 0;
+      width: min(520px, 100%);
+    }
+    .filters-row .search select {
+      min-width: 180px;
+    }
+    .carousel {
+      position: relative;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow);
+      background: #0f0f0f;
+    }
+    .carousel-track {
+      display: flex;
+      transition: transform 0.6s ease;
+      will-change: transform;
+    }
+    .carousel-slide {
+      min-width: 100%;
+      aspect-ratio: 16 / 9;
+      position: relative;
+      overflow: hidden;
+    }
+    .carousel-slide::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(5, 5, 5, 0.05), rgba(5, 5, 5, 0.35));
+      pointer-events: none;
+    }
+    .carousel-slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transform: scale(1.01);
+    }
+    .carousel-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.5);
+      background: rgba(8, 8, 8, 0.55);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      z-index: 2;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .carousel-btn:hover {
+      transform: translateY(-50%) scale(1.05);
+      background: rgba(8, 8, 8, 0.75);
+    }
+    .carousel-btn.prev { left: 14px; }
+    .carousel-btn.next { right: 14px; }
+    .carousel-dots {
+      position: absolute;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 2;
+    }
+    .carousel-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.2);
+      background: rgba(255,255,255,0.65);
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .carousel-dot.active {
+      background: var(--accent);
+      transform: scale(1.2);
+    }
     .hero {
       background: linear-gradient(120deg, #ffffff, #f5f5f1 55%, #f0f0ec);
       border: 1px solid var(--border);
@@ -680,7 +772,7 @@
     @media (max-width: 900px) {
       .admin { grid-template-columns: 1fr; }
       .search { width: 100%; margin-left: 0; }
-      .hero { flex-direction: column; align-items: flex-start; }
+      .filters-row { flex-direction: column; align-items: stretch; }
       .detail-card { grid-template-columns: 1fr; }
       .detail-image { height: 320px; }
       .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -697,6 +789,10 @@
       .pill { order: 3; }
       .local-card { min-height: 220px; }
       .category-grid { grid-template-columns: 1fr; }
+      .carousel-btn {
+        width: 34px;
+        height: 34px;
+      }
       .card-cta {
         opacity: 1;
         transform: none;
@@ -709,6 +805,9 @@
         transform: none;
         pointer-events: auto;
       }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .carousel-track { transition: none; }
     }
   </style>
 </head>
@@ -736,11 +835,7 @@
     </div>
 
     <section id="storefront-view">
-      <div class="hero">
-        <div>
-          <h1>Fits oversized. Siluetas fuertes.</h1>
-          <p>Mirá los últimos drops baggy y esenciales con inspiración archive. Esta es una tienda demo hecha con HTML estático + Supabase.</p>
-        </div>
+      <div class="filters-row">
         <div class="search">
           <select id="category-filter" aria-label="Filtrar por categoría">
             <option value="Todas">Todas</option>
@@ -749,20 +844,40 @@
         </div>
       </div>
 
-      <div class="section-title">Nuestro local</div>
-      <a
-        class="local-card"
-        href="https://maps.app.goo.gl/WH6f6YpUDKEm6yfH8"
-        target="_blank"
-        rel="noopener noreferrer"
-        style="background-image: url('https://images.unsplash.com/photo-1768758533474-5cd148638a98?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1600');"
-        aria-label="Abrir ubicación del local en Google Maps"
-      >
-        <div class="local-content">
-          <h2 class="local-title">Nuestro local</h2>
-          <span class="local-cta">Ver ubicación ↗</span>
+      <div class="carousel" data-carousel aria-label="Carrusel principal">
+        <div class="carousel-track" data-carousel-track>
+          <div class="carousel-slide" data-carousel-slide>
+            <img
+              src="https://images.unsplash.com/photo-1635650804263-1a1941e14df5?auto=format&fit=crop&w=1600&h=900&q=80"
+              alt="Streetwear urbano con oversized y siluetas fuertes"
+            />
+          </div>
+          <div class="carousel-slide" data-carousel-slide>
+            <img
+              src="https://images.unsplash.com/photo-1570570133995-a37b2df86f91?auto=format&fit=crop&w=1600&h=900&q=80"
+              alt="Look urbano con hoodie oversize en la calle"
+            />
+          </div>
+          <div class="carousel-slide" data-carousel-slide>
+            <img
+              src="https://images.unsplash.com/photo-1553227138-bff31be43f47?auto=format&fit=crop&w=1600&h=900&q=80"
+              alt="Estética streetwear con moda urbana y actitud"
+            />
+          </div>
         </div>
-      </a>
+        <button class="carousel-btn prev" type="button" data-carousel-prev aria-label="Slide anterior">‹</button>
+        <button class="carousel-btn next" type="button" data-carousel-next aria-label="Slide siguiente">›</button>
+        <div class="carousel-dots" role="tablist" aria-label="Indicadores del carrusel">
+          <button class="carousel-dot active" type="button" data-carousel-dot data-carousel-index="0" aria-label="Ir al slide 1"></button>
+          <button class="carousel-dot" type="button" data-carousel-dot data-carousel-index="1" aria-label="Ir al slide 2"></button>
+          <button class="carousel-dot" type="button" data-carousel-dot data-carousel-index="2" aria-label="Ir al slide 3"></button>
+        </div>
+      </div>
+
+      <div id="storefront-list">
+        <div class="section-title">Productos</div>
+        <div id="product-grid" class="grid"></div>
+      </div>
 
       <div class="section-title">Categorías destacadas</div>
       <div class="category-grid">
@@ -798,10 +913,20 @@
         </a>
       </div>
 
-      <div id="storefront-list">
-        <div class="section-title">Productos</div>
-        <div id="product-grid" class="grid"></div>
-      </div>
+      <div class="section-title">Nuestro local</div>
+      <a
+        class="local-card"
+        href="https://maps.app.goo.gl/WH6f6YpUDKEm6yfH8"
+        target="_blank"
+        rel="noopener noreferrer"
+        style="background-image: url('https://images.unsplash.com/photo-1768758533474-5cd148638a98?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1600');"
+        aria-label="Abrir ubicación del local en Google Maps"
+      >
+        <div class="local-content">
+          <h2 class="local-title">Nuestro local</h2>
+          <span class="local-cta">Ver ubicación ↗</span>
+        </div>
+      </a>
 
       <div id="product-detail" class="detail-view hidden">
         <div class="section-title">Detalle del producto</div>
@@ -1008,6 +1133,12 @@
     const sizeContainer = document.getElementById('sizes');
     const measurementsContainer = document.getElementById('size-measurements');
     const categoryFilter = document.getElementById('category-filter');
+    const carousel = document.querySelector('[data-carousel]');
+    const carouselTrack = document.querySelector('[data-carousel-track]');
+    const carouselSlides = Array.from(document.querySelectorAll('[data-carousel-slide]'));
+    const carouselPrev = document.querySelector('[data-carousel-prev]');
+    const carouselNext = document.querySelector('[data-carousel-next]');
+    const carouselDots = Array.from(document.querySelectorAll('[data-carousel-dot]'));
 
     const SIZE_KEYS = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
     const FALLBACK_IMAGE = 'https://placehold.co/800x800?text=Streetwear';
@@ -1042,6 +1173,8 @@
     let previewObjectUrlExtra2 = '';
     let existingExtraImageUrl1 = '';
     let existingExtraImageUrl2 = '';
+    let carouselIndex = 0;
+    let carouselTimer = null;
 
     const ADMIN_EMAIL = 'nachov663@gmail.com';
 
@@ -1061,6 +1194,59 @@
     }
 
     populateCategorySelects();
+
+    function setCarouselIndex(nextIndex) {
+      if (!carouselTrack || carouselSlides.length === 0) return;
+      const total = carouselSlides.length;
+      carouselIndex = ((nextIndex % total) + total) % total;
+      carouselTrack.style.transform = `translateX(-${carouselIndex * 100}%)`;
+      carouselDots.forEach((dot, index) => {
+        dot.classList.toggle('active', index === carouselIndex);
+      });
+    }
+
+    function stopCarouselAutoplay() {
+      if (carouselTimer) {
+        clearInterval(carouselTimer);
+        carouselTimer = null;
+      }
+    }
+
+    function startCarouselAutoplay() {
+      if (!carouselTrack || carouselSlides.length < 2) return;
+      stopCarouselAutoplay();
+      carouselTimer = setInterval(() => {
+        setCarouselIndex(carouselIndex + 1);
+      }, 6500);
+    }
+
+    if (carouselTrack) {
+      setCarouselIndex(0);
+      startCarouselAutoplay();
+      carouselPrev?.addEventListener('click', () => {
+        setCarouselIndex(carouselIndex - 1);
+      });
+      carouselNext?.addEventListener('click', () => {
+        setCarouselIndex(carouselIndex + 1);
+      });
+      carouselDots.forEach(dot => {
+        dot.addEventListener('click', () => {
+          const targetIndex = Number(dot.dataset.carouselIndex || 0);
+          setCarouselIndex(targetIndex);
+        });
+      });
+      carousel?.addEventListener('mouseenter', stopCarouselAutoplay);
+      carousel?.addEventListener('mouseleave', startCarouselAutoplay);
+      carousel?.addEventListener('focusin', stopCarouselAutoplay);
+      carousel?.addEventListener('focusout', startCarouselAutoplay);
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          stopCarouselAutoplay();
+        } else {
+          startCarouselAutoplay();
+        }
+      });
+    }
 
     function isAdminUser(user) {
       // Admin access is based solely on the Supabase Auth email.
