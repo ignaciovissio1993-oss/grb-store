@@ -168,6 +168,9 @@
       gap: 10px;
       width: min(380px, 100%);
     }
+    .search select {
+      min-width: 160px;
+    }
     .search input {
       width: 100%;
       padding: 10px 12px;
@@ -301,6 +304,21 @@
       width: 100%;
       text-align: center;
       padding: 8px;
+    }
+    .size-measurements {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .size-measurements label {
+      margin: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--text);
     }
     .detail-view {
       margin-top: 22px;
@@ -569,6 +587,9 @@
           <p>Mirá los últimos drops baggy y esenciales con inspiración archive. Esta es una tienda demo hecha con HTML estático + Supabase.</p>
         </div>
         <div class="search">
+          <select id="category-filter" aria-label="Filtrar por categoría">
+            <option value="Todas">Todas</option>
+          </select>
           <input id="search" type="text" placeholder="Buscar por título..." />
         </div>
       </div>
@@ -589,6 +610,7 @@
           <div class="detail-meta">
             <h2 id="detail-title" class="detail-title"></h2>
             <div id="detail-price" class="price"></div>
+            <div id="detail-category" class="pill hidden"></div>
             <div id="detail-description" class="detail-description"></div>
             <div id="detail-stock" class="stock-list"></div>
             <div class="cart-controls">
@@ -623,6 +645,11 @@
             <label for="price">Precio (USD)</label>
             <input id="price" type="number" step="0.01" min="0" required />
 
+            <label for="category">Categoría</label>
+            <select id="category">
+              <option value="">Sin categoría</option>
+            </select>
+
             <label for="imageFile">Imagen del producto (subir)</label>
             <input id="imageFile" type="file" accept="image/*" />
             <img id="imagePreview" class="image-preview" alt="Image preview" />
@@ -652,6 +679,16 @@
               <label>L <input type="number" min="0" step="1" data-size="L" value="0" /></label>
               <label>XL <input type="number" min="0" step="1" data-size="XL" value="0" /></label>
               <label>XXL <input type="number" min="0" step="1" data-size="XXL" value="0" /></label>
+            </div>
+
+            <label>Medidas por talle (opcional)</label>
+            <div class="size-measurements" id="size-measurements">
+              <label>XS <input type="text" data-size="XS" placeholder="90 cm x 70 cm" /></label>
+              <label>S <input type="text" data-size="S" placeholder="90 cm x 70 cm" /></label>
+              <label>M <input type="text" data-size="M" placeholder="95 cm x 75 cm" /></label>
+              <label>L <input type="text" data-size="L" placeholder="100 cm x 80 cm" /></label>
+              <label>XL <input type="text" data-size="XL" placeholder="110 cm x 90 cm" /></label>
+              <label>XXL <input type="text" data-size="XXL" placeholder="115 cm x 95 cm" /></label>
             </div>
 
             <div class="actions">
@@ -726,6 +763,7 @@
     const detailGalleryNext = document.getElementById('detail-gallery-next');
     const detailTitle = document.getElementById('detail-title');
     const detailPrice = document.getElementById('detail-price');
+    const detailCategory = document.getElementById('detail-category');
     const detailDescription = document.getElementById('detail-description');
     const detailStock = document.getElementById('detail-stock');
     const detailBack = document.getElementById('detail-back');
@@ -753,6 +791,7 @@
     const titleField = document.getElementById('title');
     const descField = document.getElementById('description');
     const priceField = document.getElementById('price');
+    const categoryField = document.getElementById('category');
     const imageField = document.getElementById('imageUrl');
     const imageFileField = document.getElementById('imageFile');
     const imagePreview = document.getElementById('imagePreview');
@@ -763,9 +802,24 @@
     const extraImagePreview1 = document.getElementById('extraImagePreview1');
     const extraImagePreview2 = document.getElementById('extraImagePreview2');
     const sizeContainer = document.getElementById('sizes');
+    const measurementsContainer = document.getElementById('size-measurements');
+    const categoryFilter = document.getElementById('category-filter');
 
     const SIZE_KEYS = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
     const FALLBACK_IMAGE = 'https://placehold.co/800x800?text=Streetwear';
+    const CATEGORY_OPTIONS = [
+      'Remeras',
+      'Pantalones',
+      'Buzos',
+      'Camperas',
+      'Shorts',
+      'Ropa interior',
+      'Medias',
+      'Accesorios',
+      'Gorras',
+      'Calzado',
+      'Otros'
+    ];
 
     let products = [];
     let productsLoadState = {
@@ -786,6 +840,23 @@
     let existingExtraImageUrl2 = '';
 
     const ADMIN_EMAIL = 'nachov663@gmail.com';
+
+    function populateCategorySelects() {
+      if (categoryField) {
+        categoryField.innerHTML = [
+          '<option value="">Sin categoría</option>',
+          ...CATEGORY_OPTIONS.map(option => `<option value="${option}">${option}</option>`)
+        ].join('');
+      }
+      if (categoryFilter) {
+        categoryFilter.innerHTML = [
+          '<option value="Todas">Todas</option>',
+          ...CATEGORY_OPTIONS.map(option => `<option value="${option}">${option}</option>`)
+        ].join('');
+      }
+    }
+
+    populateCategorySelects();
 
     function isAdminUser(user) {
       // Admin access is based solely on the Supabase Auth email.
@@ -891,6 +962,45 @@
       });
     }
 
+    function normalizeSizeMeasurements(product) {
+      let raw = product?.size_measurements ?? null;
+      if (typeof raw === 'string') {
+        try {
+          raw = JSON.parse(raw);
+        } catch (error) {
+          console.warn('[debug] size_measurements JSON parse failed:', error);
+          raw = null;
+        }
+      }
+      if (!raw || typeof raw !== 'object') return {};
+      const normalized = {};
+      SIZE_KEYS.forEach(size => {
+        const value = raw[size];
+        if (value === undefined || value === null) return;
+        const text = String(value).trim();
+        if (text) normalized[size] = text;
+      });
+      return normalized;
+    }
+
+    function getSizeMeasurements() {
+      const measurements = {};
+      measurementsContainer.querySelectorAll('input[type="text"]').forEach(input => {
+        const size = input.dataset.size;
+        const value = input.value.trim();
+        if (value) measurements[size] = value;
+      });
+      return Object.keys(measurements).length ? measurements : null;
+    }
+
+    function setSizeMeasurements(measurements) {
+      const normalized = measurements ? normalizeSizeMeasurements({ size_measurements: measurements }) : {};
+      measurementsContainer.querySelectorAll('input[type="text"]').forEach(input => {
+        const size = input.dataset.size;
+        input.value = normalized[size] || '';
+      });
+    }
+
     function normalizeStockBySize(product) {
       let raw = product?.stock_by_size ?? null;
       console.log('[debug] stock_by_size raw:', raw);
@@ -916,6 +1026,8 @@
       formTitle.textContent = 'Agregar producto';
       form.reset();
       setStockBySize(null);
+      if (categoryField) categoryField.value = '';
+      setSizeMeasurements(null);
       selectedImageFile = null;
       existingImageUrl = '';
       selectedExtraImageFile1 = null;
@@ -1026,7 +1138,14 @@
       console.log('[app] renderProducts called', { reason });
       console.log('[app] product render start', { reason, status: productsLoadState.status });
       const query = searchInput.value.toLowerCase();
-      const filtered = products.filter(p => (p.title || '').toLowerCase().includes(query));
+      const selectedCategory = categoryFilter?.value || 'Todas';
+      const filtered = products.filter(product => {
+        const matchesQuery = (product.title || '').toLowerCase().includes(query);
+        if (!matchesQuery) return false;
+        if (selectedCategory === 'Todas') return true;
+        const categoryValue = (product.category || '').trim();
+        return categoryValue === selectedCategory;
+      });
       if (filtered.length === 0) {
         if (productsLoadState.status === 'loading') {
           productGrid.innerHTML = `
@@ -1082,6 +1201,7 @@
 
     function renderStockRows(product) {
       const stock = normalizeStockBySize(product);
+      const measurements = normalizeSizeMeasurements(product);
       const sizes = Object.keys(stock);
       const hasStock = sizes.some(size => stock[size] > 0);
       if (!hasStock) {
@@ -1090,7 +1210,7 @@
       return `
         ${sizes.map(size => `
           <div class="stock-row">
-            <span class="stock-label">${size}</span>
+            <span class="stock-label">${measurements[size] ? `${size} · ${measurements[size]}` : size}</span>
             <span>${stock[size] > 0 ? stock[size] : 'sin stock'}</span>
           </div>
         `).join('')}
@@ -1116,6 +1236,14 @@
       renderDetailGallery(product);
       detailTitle.textContent = product.title;
       detailPrice.textContent = `$${Number(product.price).toFixed(2)}`;
+      const categoryValue = (product.category || '').trim();
+      if (categoryValue) {
+        detailCategory.textContent = `Categoría: ${categoryValue}`;
+        detailCategory.classList.remove('hidden');
+      } else {
+        detailCategory.textContent = '';
+        detailCategory.classList.add('hidden');
+      }
       detailDescription.textContent = product.description;
       detailStock.innerHTML = renderStockRows(product);
       updateDetailSizes(product);
@@ -1136,6 +1264,8 @@
       detailGalleryNext.classList.add('hidden');
       detailTitle.textContent = 'Producto no disponible';
       detailPrice.textContent = '';
+      detailCategory.textContent = '';
+      detailCategory.classList.add('hidden');
       detailDescription.textContent = message || 'No se pudo cargar el detalle del producto.';
       detailStock.innerHTML = '';
       detailSize.innerHTML = '';
@@ -1177,6 +1307,7 @@
         titleField.value = product.title;
         descField.value = product.description;
         priceField.value = product.price;
+        categoryField.value = product.category || '';
         existingImageUrl = product.image_url || '';
         existingExtraImageUrl1 = product.extra_image_url_1 || '';
         existingExtraImageUrl2 = product.extra_image_url_2 || '';
@@ -1205,6 +1336,7 @@
           extraImagePreview2.style.display = 'none';
         }
         setStockBySize(normalizeStockBySize(product));
+        setSizeMeasurements(product.size_measurements);
         setActiveView('admin');
       }
 
@@ -1342,6 +1474,8 @@
         extraImageUrl2 = existingExtraImageUrl2;
       }
 
+      const sizeMeasurements = getSizeMeasurements();
+      const categoryValue = categoryField.value.trim();
       const payload = {
         title: titleField.value.trim(),
         description: descField.value.trim(),
@@ -1349,7 +1483,9 @@
         image_url: imageUrl,
         extra_image_url_1: extraImageUrl1 || null,
         extra_image_url_2: extraImageUrl2 || null,
-        stock_by_size: getStockBySize()
+        stock_by_size: getStockBySize(),
+        size_measurements: sizeMeasurements,
+        category: categoryValue || null
       };
 
       if (!payload.title || !payload.description || !payload.image_url) {
@@ -1397,6 +1533,11 @@
     searchInput.addEventListener('input', () => {
       showStorefrontList();
       renderProducts({ reason: 'search' });
+    });
+
+    categoryFilter.addEventListener('change', () => {
+      showStorefrontList();
+      renderProducts({ reason: 'category-filter' });
     });
 
     function setCartMessage(message) {
