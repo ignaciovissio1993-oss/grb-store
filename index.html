@@ -660,7 +660,7 @@
     let previewObjectUrl = '';
     let existingImageUrl = '';
 
-    function setActiveView(view) {
+    function setActiveView(view, { reason = 'view-change' } = {}) {
       const isStore = view === 'store';
       const isAdmin = view === 'admin';
       const isCart = view === 'cart';
@@ -672,7 +672,7 @@
       storeBtn.classList.toggle('active', isStore);
       adminBtn.classList.toggle('active', isAdmin);
       if (isStore) {
-        showStorefrontList();
+        renderStorefront({ reason });
       }
     }
 
@@ -792,7 +792,7 @@
           productsLoadState.errorMessage = '';
           console.log('[app] product load success', { count: products.length });
         }
-        renderProducts();
+        renderProducts({ reason: 'load' });
         renderAdminList();
         if (activeProductId) {
           const updated = products.find(p => String(p.id) === String(activeProductId));
@@ -805,7 +805,7 @@
         products = [];
         productsLoadState.status = 'error';
         productsLoadState.errorMessage = 'No se pudieron cargar los productos';
-        renderProducts();
+        renderProducts({ reason: 'load-error' });
         renderAdminList();
       } finally {
         document.querySelector('#loading')?.classList.add('hidden');
@@ -813,14 +813,26 @@
       }
     }
 
-    function renderProducts() {
-      console.log('[app] product render start');
+    function renderProducts({ reason = 'manual' } = {}) {
+      console.log('[app] product render start', { reason, status: productsLoadState.status });
       const query = searchInput.value.toLowerCase();
       const filtered = products.filter(p => (p.title || '').toLowerCase().includes(query));
-      if (filtered.length === 0 && productsLoadState.status === 'error') {
-        productGrid.innerHTML = `<div class="auth-status">${productsLoadState.errorMessage || 'No se pudieron cargar los productos'}</div>`;
-        console.log('[app] product render end', { count: 0, error: true });
-        return;
+      if (filtered.length === 0) {
+        if (productsLoadState.status === 'loading') {
+          productGrid.innerHTML = `<div class="auth-status">Cargando productos...</div>`;
+          console.log('[app] product render end', { count: 0, loading: true });
+          return;
+        }
+        if (productsLoadState.status === 'error') {
+          productGrid.innerHTML = `<div class="auth-status">${productsLoadState.errorMessage || 'No se pudieron cargar los productos'}</div>`;
+          console.log('[app] product render end', { count: 0, error: true });
+          return;
+        }
+        if (products.length === 0) {
+          productGrid.innerHTML = `<div class="auth-status">No hay productos disponibles</div>`;
+          console.log('[app] product render end', { count: 0, empty: true });
+          return;
+        }
       }
       productGrid.innerHTML = filtered.map(product => `
         <article class="card">
@@ -864,7 +876,12 @@
     }
 
     function showProductDetail(product) {
-      if (!product) return;
+      if (!product) {
+        console.warn('[app] detail render error: missing product', { activeProductId });
+        renderDetailFallback('No se pudo cargar el detalle del producto.');
+        return;
+      }
+      console.log('[app] detail render start', { id: product.id });
       activeProductId = product.id;
       console.log('[debug] image_url:', product.image_url);
       detailImage.src = product.image_url || FALLBACK_IMAGE;
@@ -880,6 +897,23 @@
       storefrontList.classList.add('hidden');
       productDetail.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      console.log('[app] detail render success', { id: product.id });
+    }
+
+    function renderDetailFallback(message) {
+      activeProductId = null;
+      detailImage.src = FALLBACK_IMAGE;
+      detailTitle.textContent = 'Producto no disponible';
+      detailPrice.textContent = '';
+      detailDescription.textContent = message || 'No se pudo cargar el detalle del producto.';
+      detailStock.innerHTML = '';
+      detailSize.innerHTML = '';
+      detailSize.disabled = true;
+      detailQty.disabled = true;
+      addToCartBtn.disabled = true;
+      storefrontList.classList.add('hidden');
+      productDetail.classList.remove('hidden');
+      console.log('[app] detail render fallback');
     }
 
     function renderAdminList() {
@@ -1038,6 +1072,7 @@
       const button = event.target.closest('.product-image-button');
       if (!button) return;
       const id = button.dataset.id;
+      console.log('[app] product click', { id });
       const product = products.find(p => String(p.id) === String(id));
       showProductDetail(product);
     });
@@ -1046,7 +1081,7 @@
 
     searchInput.addEventListener('input', () => {
       showStorefrontList();
-      renderProducts();
+      renderProducts({ reason: 'search' });
     });
 
     function setCartMessage(message) {
@@ -1087,8 +1122,9 @@
         setCartMessage(error.message);
         return;
       }
+      console.log('[app] signup success', { email });
       await refreshUser();
-      if (currentUser) setActiveView('store');
+      if (currentUser) setActiveView('store', { reason: 'signup' });
     }
 
     async function handleLogIn() {
@@ -1104,13 +1140,15 @@
         setCartMessage(error.message);
         return;
       }
+      console.log('[app] login success', { email });
       await refreshUser();
-      if (currentUser) setActiveView('store');
+      if (currentUser) setActiveView('store', { reason: 'login' });
     }
 
     async function handleLogOut() {
       setCartMessage('');
       await supabase.auth.signOut();
+      console.log('[app] logout success');
       await refreshUser();
     }
 
@@ -1124,6 +1162,9 @@
       updateAuthUI(currentUser);
       refreshCartCount();
       ensureProductsLoaded({ reason: 'auth-change' });
+      if (!storefrontView.classList.contains('hidden')) {
+        renderStorefront({ reason: 'auth-change' });
+      }
     });
 
     function updateDetailSizes(product) {
@@ -1278,7 +1319,7 @@
       }).join('');
     }
 
-    cartBack.addEventListener('click', () => setActiveView('store'));
+    cartBack.addEventListener('click', () => setActiveView('store', { reason: 'cart-back' }));
 
     cartList.addEventListener('click', async (event) => {
       const button = event.target.closest('button[data-action="remove"]');
@@ -1300,11 +1341,15 @@
 
     function ensureProductsLoaded({ force = false, reason = 'auto' } = {}) {
       if (productsLoadState.inFlight) return productsLoadState.inFlight;
-      if (!force && productsLoadState.status === 'success' && products.length > 0) {
-        renderProducts();
+      const needsReload = force
+        || productsLoadState.status === 'idle'
+        || productsLoadState.status === 'error'
+        || products.length === 0;
+      if (!needsReload && productsLoadState.status === 'success') {
+        renderProducts({ reason: `${reason}-cache` });
         return Promise.resolve(products);
       }
-      if (!force && productsLoadState.status === 'loading') {
+      if (productsLoadState.status === 'loading') {
         return productsLoadState.inFlight;
       }
       productsLoadState.inFlight = loadProducts({ reason })
@@ -1314,9 +1359,28 @@
       return productsLoadState.inFlight;
     }
 
-    console.log('[app] init');
-    await refreshUser();
-    await ensureProductsLoaded({ reason: 'init' });
+    function renderStorefront({ reason = 'manual' } = {}) {
+      console.log('[app] storefront render start', { reason });
+      try {
+        showStorefrontList();
+        renderProducts({ reason: `${reason}-storefront` });
+        console.log('[app] storefront render success');
+      } catch (error) {
+        console.error('[app] storefront render error', error);
+        productGrid.innerHTML = `<div class="auth-status">No se pudieron cargar los productos</div>`;
+      }
+    }
+
+    async function initApp() {
+      console.log('[app] init start');
+      await refreshUser();
+      console.log('[app] session on startup', { userId: currentUser?.id || null });
+      await ensureProductsLoaded({ reason: 'init' });
+      renderStorefront({ reason: 'init' });
+      console.log('[app] init end');
+    }
+
+    await initApp();
   </script>
 </body>
 </html>
