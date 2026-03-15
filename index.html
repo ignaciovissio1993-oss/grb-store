@@ -307,17 +307,25 @@
     }
     .size-measurements {
       display: grid;
-      grid-template-columns: repeat(3, minmax(120px, 1fr));
-      gap: 10px;
+      grid-template-columns: 1fr;
+      gap: 8px;
       margin-top: 8px;
     }
     .size-measurements label {
       margin: 0;
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(40px, 56px) minmax(180px, 1fr);
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       font-size: 0.85rem;
+      color: var(--text);
+    }
+    .size-measurements input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fafaf7;
       color: var(--text);
     }
     .detail-view {
@@ -403,17 +411,27 @@
     }
     .stock-list {
       display: grid;
-      gap: 4px;
+      gap: 6px;
       font-size: 0.82rem;
       color: var(--muted);
     }
     .stock-row {
-      display: flex;
-      justify-content: space-between;
-      border-bottom: 1px dashed rgba(255,255,255,0.06);
-      padding-bottom: 4px;
+      display: grid;
+      grid-template-columns: minmax(36px, 52px) minmax(140px, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      border-bottom: 1px dashed rgba(0,0,0,0.12);
+      padding: 6px 0;
     }
     .stock-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .stock-row.stock-header {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      padding-top: 0;
+    }
+    .stock-row.stock-header span { color: var(--muted); }
     .stock-label { color: var(--text); }
     .stock-empty { color: var(--accent-2); font-weight: 600; }
     .actions {
@@ -683,12 +701,12 @@
 
             <label>Medidas por talle (opcional)</label>
             <div class="size-measurements" id="size-measurements">
-              <label>XS <input type="text" data-size="XS" placeholder="90 cm x 70 cm" /></label>
-              <label>S <input type="text" data-size="S" placeholder="90 cm x 70 cm" /></label>
-              <label>M <input type="text" data-size="M" placeholder="95 cm x 75 cm" /></label>
-              <label>L <input type="text" data-size="L" placeholder="100 cm x 80 cm" /></label>
-              <label>XL <input type="text" data-size="XL" placeholder="110 cm x 90 cm" /></label>
-              <label>XXL <input type="text" data-size="XXL" placeholder="115 cm x 95 cm" /></label>
+              <label>XS <input type="text" data-size="XS" placeholder="90 x 70 cm" /></label>
+              <label>S <input type="text" data-size="S" placeholder="95 x 75 cm" /></label>
+              <label>M <input type="text" data-size="M" placeholder="100 x 80 cm" /></label>
+              <label>L <input type="text" data-size="L" placeholder="105 x 85 cm" /></label>
+              <label>XL <input type="text" data-size="XL" placeholder="110 x 90 cm" /></label>
+              <label>XXL <input type="text" data-size="XXL" placeholder="115 x 95 cm" /></label>
             </div>
 
             <div class="actions">
@@ -987,8 +1005,9 @@
       const measurements = {};
       measurementsContainer.querySelectorAll('input[type="text"]').forEach(input => {
         const size = input.dataset.size;
-        const value = input.value.trim();
-        if (value) measurements[size] = value;
+        const rawValue = input.value;
+        const trimmed = rawValue.trim();
+        if (trimmed) measurements[size] = rawValue;
       });
       return Object.keys(measurements).length ? measurements : null;
     }
@@ -1208,9 +1227,15 @@
         return `<div class="stock-empty">Sin stock</div>`;
       }
       return `
+        <div class="stock-row stock-header">
+          <span>Talle</span>
+          <span>Medida</span>
+          <span>Stock</span>
+        </div>
         ${sizes.map(size => `
           <div class="stock-row">
-            <span class="stock-label">${measurements[size] ? `${size} · ${measurements[size]}` : size}</span>
+            <span class="stock-label">${size}</span>
+            <span>${measurements[size] || ''}</span>
             <span>${stock[size] > 0 ? stock[size] : 'sin stock'}</span>
           </div>
         `).join('')}
