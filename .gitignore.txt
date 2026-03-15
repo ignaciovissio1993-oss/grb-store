@@ -1,0 +1,5 @@
+node_modules/
+server.js
+store.db
+package.json
+package-lock.json
