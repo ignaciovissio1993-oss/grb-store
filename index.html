@@ -51,11 +51,27 @@
       border-radius: 8px;
       border: 1px solid var(--border);
     }
+    .brand-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-right: auto;
+      background: transparent;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      text-align: left;
+    }
+    .brand-link:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 4px;
+      border-radius: 10px;
+    }
     .brand {
       font-size: 1.2rem;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      margin-right: auto;
+      margin: 0;
       min-width: 0;
       max-width: 100%;
     }
@@ -526,8 +542,10 @@
 <body>
   <header>
     <div class="header-inner">
-      <img src="logo.jpg" alt="Logo" class="logo" />
-      <div class="brand">TIENDA DE ROPA PRUEBA GITHUB</div>
+      <button id="brand-link" class="brand-link" type="button">
+        <img src="logo.jpg" alt="Logo" class="logo" />
+        <div class="brand">TIENDA DE ROPA PRUEBA GITHUB</div>
+      </button>
       <div class="pill">TIENDA DEMO LOCAL</div>
       <div class="header-actions">
         <button id="btn-account" class="header-btn" type="button">Cuenta</button>
@@ -690,6 +708,7 @@
     );
 
     const storeBtn = document.getElementById('btn-store');
+    const brandLink = document.getElementById('brand-link');
     const adminBtn = document.getElementById('btn-admin');
     const headerCartBtn = document.getElementById('btn-header-cart');
     const accountBtn = document.getElementById('btn-account');
@@ -766,6 +785,25 @@
     let existingExtraImageUrl1 = '';
     let existingExtraImageUrl2 = '';
 
+    const ADMIN_EMAIL = 'nachov663@gmail.com';
+
+    function isAdminUser(user) {
+      // Admin access is based solely on the Supabase Auth email.
+      return !!user && user.email === ADMIN_EMAIL;
+    }
+
+    function updateAdminNav(user) {
+      const isAdmin = isAdminUser(user);
+      // Toggle admin/store navigation based on admin validation.
+      adminBtn.classList.toggle('hidden', !isAdmin);
+      storeBtn.classList.toggle('hidden', !isAdmin);
+      if (!isAdmin && !adminView.classList.contains('hidden')) {
+        // Block non-admin users from staying in the admin view.
+        alert('Acceso denegado');
+        showStoreView({ reason: 'admin-blocked' });
+      }
+    }
+
     function showStoreView({ reason = 'view-change' } = {}) {
       console.log('[app] returning to storefront view', { reason });
       storefrontView.classList.remove('hidden');
@@ -799,6 +837,13 @@
         showStoreView({ reason });
         return;
       }
+      if (view === 'admin' && !isAdminUser(currentUser)) {
+        // Guard admin view access on every navigation attempt.
+        console.warn('[app] blocked non-admin access to admin view');
+        alert('Acceso denegado');
+        showStoreView({ reason: 'admin-blocked' });
+        return;
+      }
       const isAdmin = view === 'admin';
       const isCart = view === 'cart';
       const isLogin = view === 'login';
@@ -815,6 +860,7 @@
 
     storeBtn.addEventListener('click', () => setActiveView('store'));
     adminBtn.addEventListener('click', () => setActiveView('admin'));
+    brandLink.addEventListener('click', () => setActiveView('store', { reason: 'brand-link' }));
     headerCartBtn.addEventListener('click', async () => {
       await renderCartView();
       setActiveView('cart');
@@ -1369,6 +1415,7 @@
         loginBtn.disabled = false;
         signupBtn.disabled = false;
       }
+      updateAdminNav(user);
     }
 
     async function refreshUser() {
