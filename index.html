@@ -748,24 +748,54 @@
     }
 
     async function loadProducts() {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('id', { ascending: true });
+      console.log('Loading products...');
+      const timeoutMs = 5000;
+      const timeoutPromise = new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            data: [],
+            error: { message: `Timeout after ${timeoutMs}ms`, code: 'TIMEOUT' },
+            timeout: true
+          });
+        }, timeoutMs);
+      });
 
-      if (error) {
-        console.error('Failed to load products:', error);
-        products = [];
-      } else {
-        products = data || [];
-      }
-      renderProducts();
-      renderAdminList();
-      if (activeProductId) {
-        const updated = products.find(p => String(p.id) === String(activeProductId));
-        if (updated) {
-          showProductDetail(updated);
+      try {
+        const result = await Promise.race([
+          supabase
+            .from('products')
+            .select('*')
+            .order('id', { ascending: true }),
+          timeoutPromise
+        ]);
+
+        const { data, error } = result || {};
+        if (result?.timeout) {
+          console.warn('Products request timed out. Rendering empty list to keep UI responsive.');
         }
+        if (error) {
+          console.error('Supabase error:', error);
+          products = data || [];
+        } else {
+          products = data || [];
+        }
+
+        console.log('Products received:', products);
+        renderProducts();
+        renderAdminList();
+        if (activeProductId) {
+          const updated = products.find(p => String(p.id) === String(activeProductId));
+          if (updated) {
+            showProductDetail(updated);
+          }
+        }
+      } catch (err) {
+        console.error('Unexpected error:', err);
+        products = [];
+        renderProducts();
+        renderAdminList();
+      } finally {
+        document.querySelector('#loading')?.classList.add('hidden');
       }
     }
 
@@ -1246,7 +1276,10 @@
     });
 
     await refreshUser();
-    await loadProducts();
+    if (!window.productsLoaded) {
+      window.productsLoaded = true;
+      await loadProducts();
+    }
   </script>
 </body>
 </html>
