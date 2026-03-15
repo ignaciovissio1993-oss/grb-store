@@ -660,10 +660,6 @@
     let previewObjectUrl = '';
     let existingImageUrl = '';
 
-    function isAuthRelatedReason(reason) {
-      return ['login', 'logout', 'signup', 'auth-change'].includes(reason);
-    }
-
     function setActiveView(view, { reason = 'view-change' } = {}) {
       const isStore = view === 'store';
       const isAdmin = view === 'admin';
@@ -677,7 +673,7 @@
       adminBtn.classList.toggle('active', isAdmin);
       if (isStore) {
         console.log('[app] navigating to storefront', { reason });
-        ensureProductsLoaded({ reason: `${reason}-view`, force: isAuthRelatedReason(reason) })
+        loadProducts({ reason: `${reason}-view` })
           .then(() => renderStorefront({ reason }))
           .catch(error => {
             console.error('[app] storefront render error', error);
@@ -763,64 +759,73 @@
     }
 
     async function loadProducts({ reason = 'manual' } = {}) {
-      console.log('[app] loadProducts called', { reason });
-      console.log('[app] product load start', { reason });
-      productsLoadState.status = 'loading';
-      productsLoadState.errorMessage = '';
-      const timeoutMs = 5000;
-      const timeoutPromise = new Promise(resolve => {
-        setTimeout(() => {
-          resolve({
-            data: [],
-            error: { message: `Timeout after ${timeoutMs}ms`, code: 'TIMEOUT' },
-            timeout: true
-          });
-        }, timeoutMs);
-      });
+      if (productsLoadState.inFlight) return productsLoadState.inFlight;
+      const loadPromise = (async () => {
+        console.log('[app] loadProducts called', { reason });
+        console.log('[app] product load start', { reason });
+        productsLoadState.status = 'loading';
+        productsLoadState.errorMessage = '';
+        const timeoutMs = 5000;
+        const timeoutPromise = new Promise(resolve => {
+          setTimeout(() => {
+            resolve({
+              data: [],
+              error: { message: `Timeout after ${timeoutMs}ms`, code: 'TIMEOUT' },
+              timeout: true
+            });
+          }, timeoutMs);
+        });
 
-      try {
-        const result = await Promise.race([
-          supabase
-            .from('products')
-            .select('*')
-            .order('id', { ascending: true }),
-          timeoutPromise
-        ]);
+        try {
+          const result = await Promise.race([
+            supabase
+              .from('products')
+              .select('*')
+              .order('id', { ascending: true }),
+            timeoutPromise
+          ]);
 
-        const { data, error } = result || {};
-        if (result?.timeout) {
-          console.warn('Products request timed out. Rendering empty list to keep UI responsive.');
-        }
-        if (error) {
-          console.error('Supabase error:', error);
-          console.error('[app] product load error', error);
-          products = data || [];
+          const { data, error } = result || {};
+          if (result?.timeout) {
+            console.warn('Products request timed out. Rendering empty list to keep UI responsive.');
+          }
+          if (error) {
+            console.error('Supabase error:', error);
+            console.error('[app] product load error', error);
+            products = data || [];
+            productsLoadState.status = 'error';
+            productsLoadState.errorMessage = 'No se pudieron cargar los productos';
+          } else {
+            products = data || [];
+            productsLoadState.status = 'success';
+            productsLoadState.errorMessage = '';
+            console.log('[app] product load success', { count: products.length });
+          }
+          renderProducts({ reason: 'load' });
+          renderAdminList();
+          if (activeProductId) {
+            const updated = products.find(p => String(p.id) === String(activeProductId));
+            if (updated) {
+              showProductDetail(updated);
+            }
+          }
+        } catch (err) {
+          console.error('[app] product load error', err);
+          products = [];
           productsLoadState.status = 'error';
           productsLoadState.errorMessage = 'No se pudieron cargar los productos';
-        } else {
-          products = data || [];
-          productsLoadState.status = 'success';
-          productsLoadState.errorMessage = '';
-          console.log('[app] product load success', { count: products.length });
+          renderProducts({ reason: 'load-error' });
+          renderAdminList();
+        } finally {
+          document.querySelector('#loading')?.classList.add('hidden');
+          console.log('[app] product load end', { status: productsLoadState.status });
         }
-        renderProducts({ reason: 'load' });
-        renderAdminList();
-        if (activeProductId) {
-          const updated = products.find(p => String(p.id) === String(activeProductId));
-          if (updated) {
-            showProductDetail(updated);
-          }
-        }
-      } catch (err) {
-        console.error('[app] product load error', err);
-        products = [];
-        productsLoadState.status = 'error';
-        productsLoadState.errorMessage = 'No se pudieron cargar los productos';
-        renderProducts({ reason: 'load-error' });
-        renderAdminList();
+      })();
+      productsLoadState.inFlight = loadPromise;
+      try {
+        return await loadPromise;
       } finally {
-        document.querySelector('#loading')?.classList.add('hidden');
-        console.log('[app] product load end', { status: productsLoadState.status });
+        productsLoadState.inFlight = null;
       }
     }
 
@@ -1158,6 +1163,7 @@
       }
       console.log('[app] login success', { email });
       await refreshUser();
+      await loadProducts({ reason: 'login' });
       if (currentUser) setActiveView('store', { reason: 'login' });
     }
 
@@ -1166,6 +1172,7 @@
       await supabase.auth.signOut();
       console.log('[app] logout success');
       await refreshUser();
+      await loadProducts({ reason: 'logout' });
       if (!storefrontView.classList.contains('hidden')) {
         setActiveView('store', { reason: 'logout' });
       }
@@ -1180,7 +1187,7 @@
       currentUser = session?.user || null;
       updateAuthUI(currentUser);
       refreshCartCount();
-      ensureProductsLoaded({ reason: 'auth-change', force: true })
+      loadProducts({ reason: 'auth-change' })
         .then(() => {
           if (!storefrontView.classList.contains('hidden')) {
             renderStorefront({ reason: 'auth-change' });
@@ -1366,26 +1373,6 @@
       await refreshCartCount();
     });
 
-    function ensureProductsLoaded({ force = false, reason = 'auto' } = {}) {
-      if (productsLoadState.inFlight) return productsLoadState.inFlight;
-      const needsReload = force
-        || productsLoadState.status === 'idle'
-        || productsLoadState.status === 'error'
-        || products.length === 0;
-      if (!needsReload && productsLoadState.status === 'success') {
-        renderProducts({ reason: `${reason}-cache` });
-        return Promise.resolve(products);
-      }
-      if (productsLoadState.status === 'loading') {
-        return productsLoadState.inFlight;
-      }
-      productsLoadState.inFlight = loadProducts({ reason })
-        .finally(() => {
-          productsLoadState.inFlight = null;
-        });
-      return productsLoadState.inFlight;
-    }
-
     function renderStorefront({ reason = 'manual' } = {}) {
       console.log('[app] storefront render start', { reason });
       try {
@@ -1402,7 +1389,7 @@
       console.log('[app] init start');
       await refreshUser();
       console.log('[app] session on startup', { userId: currentUser?.id || null });
-      await ensureProductsLoaded({ reason: 'init' });
+      await loadProducts({ reason: 'init' });
       renderStorefront({ reason: 'init' });
       console.log('[app] init end');
     }
