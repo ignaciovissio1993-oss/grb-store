@@ -186,6 +186,101 @@
       color: var(--muted);
       margin: 30px 0 14px;
     }
+    .local-card {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      min-height: 260px;
+      padding: 22px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background-size: cover;
+      background-position: center;
+      color: #f8f8f4;
+      text-decoration: none;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .local-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(0deg, rgba(5, 5, 5, 0.78), rgba(5, 5, 5, 0.25));
+      pointer-events: none;
+    }
+    .local-card:hover {
+      transform: translateY(-4px);
+      border-color: #2e2e2e;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+    }
+    .local-content {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 8px;
+      max-width: 420px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(16, 16, 16, 0.55);
+      border: 1px solid rgba(255,255,255,0.15);
+      backdrop-filter: blur(6px);
+    }
+    .local-title {
+      margin: 0;
+      font-size: clamp(1.1rem, 2.4vw, 1.6rem);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .local-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #f3f3ed;
+    }
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .category-card {
+      position: relative;
+      min-height: 220px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background-size: cover;
+      background-position: center;
+      overflow: hidden;
+      text-decoration: none;
+      color: #f8f8f4;
+      display: flex;
+      align-items: flex-end;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .category-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(0deg, rgba(5, 5, 5, 0.75), rgba(5, 5, 5, 0.15));
+    }
+    .category-card:hover {
+      transform: translateY(-4px);
+      border-color: #2e2e2e;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+    }
+    .category-label {
+      position: relative;
+      z-index: 1;
+      font-size: clamp(1.1rem, 2.4vw, 1.5rem);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin: 0;
+    }
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, 260px);
@@ -561,6 +656,7 @@
       .hero { flex-direction: column; align-items: flex-start; }
       .detail-card { grid-template-columns: 1fr; }
       .detail-image { height: 320px; }
+      .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 640px) {
       .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
@@ -572,6 +668,8 @@
         flex-wrap: wrap;
       }
       .pill { order: 3; }
+      .local-card { min-height: 220px; }
+      .category-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -610,6 +708,55 @@
           </select>
           <input id="search" type="text" placeholder="Buscar por título..." />
         </div>
+      </div>
+
+      <div class="section-title">Nuestro local</div>
+      <a
+        class="local-card"
+        href="https://maps.app.goo.gl/WH6f6YpUDKEm6yfH8"
+        target="_blank"
+        rel="noopener noreferrer"
+        style="background-image: url('https://images.unsplash.com/photo-1768758533474-5cd148638a98?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1600');"
+        aria-label="Abrir ubicación del local en Google Maps"
+      >
+        <div class="local-content">
+          <h2 class="local-title">Nuestro local</h2>
+          <span class="local-cta">Ver ubicación ↗</span>
+        </div>
+      </a>
+
+      <div class="section-title">Categorías destacadas</div>
+      <div class="category-grid">
+        <a
+          class="category-card"
+          data-category-card
+          data-category="Remeras"
+          href="#storefront-list"
+          style="background-image: url('https://images.unsplash.com/photo-1685883785814-42d0b197ae64?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1600');"
+          aria-label="Ver categoría Remeras"
+        >
+          <h3 class="category-label">Remeras</h3>
+        </a>
+        <a
+          class="category-card"
+          data-category-card
+          data-category="Buzos"
+          href="#storefront-list"
+          style="background-image: url('https://images.pexels.com/photos/9594667/pexels-photo-9594667.jpeg?cs=srgb&fm=jpg&w=1600');"
+          aria-label="Ver categoría Buzos"
+        >
+          <h3 class="category-label">Buzos</h3>
+        </a>
+        <a
+          class="category-card"
+          data-category-card
+          data-category="Pantalones"
+          href="#storefront-list"
+          style="background-image: url('https://images.unsplash.com/photo-1715865871415-fe8e11e7b4f3?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1600');"
+          aria-label="Ver categoría Pantalones"
+        >
+          <h3 class="category-label">Pantalones</h3>
+        </a>
       </div>
 
       <div id="storefront-list">
@@ -1563,6 +1710,23 @@
     categoryFilter.addEventListener('change', () => {
       showStorefrontList();
       renderProducts({ reason: 'category-filter' });
+    });
+
+    const categoryCards = document.querySelectorAll('[data-category-card]');
+    categoryCards.forEach(card => {
+      card.addEventListener('click', (event) => {
+        if (!categoryFilter) return;
+        const targetCategory = card.dataset.category;
+        if (!targetCategory) return;
+        const hasOption = Array.from(categoryFilter.options)
+          .some(option => option.value === targetCategory);
+        if (!hasOption) return;
+        event.preventDefault();
+        categoryFilter.value = targetCategory;
+        showStorefrontList();
+        renderProducts({ reason: 'category-card' });
+        storefrontList?.scrollIntoView({ behavior: 'smooth' });
+      });
     });
 
     function setCartMessage(message) {
