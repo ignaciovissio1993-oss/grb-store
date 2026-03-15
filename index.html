@@ -295,6 +295,7 @@
       box-shadow: var(--shadow);
       display: flex;
       flex-direction: column;
+      position: relative;
       transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
     }
     .card:hover {
@@ -331,9 +332,35 @@
       transform: scale(1.03);
     }
     .card-body {
-      padding: 14px;
+      padding: 14px 14px 58px;
       display: grid;
       gap: 8px;
+    }
+    .card-cta {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 14px;
+      display: flex;
+      justify-content: center;
+      background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.92) 45%, rgba(255,255,255,0.98) 100%);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.2s ease, transform 0.25s ease;
+      pointer-events: none;
+    }
+    .card-cta .card-cta-btn {
+      width: 100%;
+      border-radius: 999px;
+      letter-spacing: 0.08em;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.18);
+    }
+    .card:hover .card-cta,
+    .card:focus-within .card-cta {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
     }
     .price {
       color: var(--text);
@@ -670,6 +697,18 @@
       .pill { order: 3; }
       .local-card { min-height: 220px; }
       .category-grid { grid-template-columns: 1fr; }
+      .card-cta {
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+      }
+    }
+    @media (hover: none) and (pointer: coarse) {
+      .card-cta {
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+      }
     }
   </style>
 </head>
@@ -1187,6 +1226,12 @@
       return normalized;
     }
 
+    function getQuickAddSize(product) {
+      const stock = normalizeStockBySize(product);
+      const available = Object.keys(stock).filter(size => stock[size] > 0);
+      return available.length === 1 ? available[0] : null;
+    }
+
     function resetForm() {
       idField.value = '';
       formTitle.textContent = 'Agregar producto';
@@ -1358,6 +1403,11 @@
             <strong>${product.title}</strong>
             <div class="price">$${Number(product.price).toFixed(2)}</div>
             <div>${summarizeDescription(product.description)}</div>
+          </div>
+          <div class="card-cta">
+            <button class="btn primary card-cta-btn" data-action="add-to-cart" data-id="${product.id}" type="button">
+              Agregar al carrito
+            </button>
           </div>
         </article>
       `).join('');
@@ -1691,7 +1741,27 @@
       setAdminMessage('Producto guardado correctamente.', 'success');
     });
 
-    productGrid.addEventListener('click', (event) => {
+    productGrid.addEventListener('click', async (event) => {
+      const quickButton = event.target.closest('button[data-action="add-to-cart"]');
+      if (quickButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        const id = quickButton.dataset.id;
+        const product = products.find(p => String(p.id) === String(id));
+        if (!product) return;
+        if (!currentUser?.id) {
+          alert('Iniciá sesión para agregar al carrito.');
+          return;
+        }
+        const quickSize = getQuickAddSize(product);
+        if (quickSize) {
+          await saveCartItem(product.id, quickSize, 1);
+          return;
+        }
+        showProductDetail(product);
+        return;
+      }
+
       const button = event.target.closest('.product-image-button');
       if (!button) return;
       const id = button.dataset.id;
