@@ -162,15 +162,18 @@
       margin-bottom: 28px;
       box-shadow: var(--shadow);
       background: #0f0f0f;
+      height: 380px;
     }
     .carousel-track {
       display: flex;
       transition: transform 0.6s ease;
       will-change: transform;
+      height: 100%;
     }
     .carousel-slide {
       min-width: 100%;
-      aspect-ratio: 16 / 9;
+      height: 100%;
+      aspect-ratio: auto;
       position: relative;
       overflow: hidden;
     }
@@ -792,6 +795,9 @@
       .carousel-btn {
         width: 34px;
         height: 34px;
+      }
+      .carousel {
+        height: 240px;
       }
       .card-cta {
         opacity: 1;
