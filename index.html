@@ -435,6 +435,30 @@
       cursor: pointer;
     }
     .hidden { display: none; }
+    .loader {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .loader-dots {
+      display: inline-flex;
+      gap: 4px;
+    }
+    .loader-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent);
+      animation: pulse 1s ease-in-out infinite;
+    }
+    .loader-dot:nth-child(2) { animation-delay: 0.15s; }
+    .loader-dot:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes pulse {
+      0%, 100% { transform: scale(0.7); opacity: 0.5; }
+      50% { transform: scale(1); opacity: 1; }
+    }
 
     @media (max-width: 900px) {
       .admin { grid-template-columns: 1fr; }
@@ -660,25 +684,50 @@
     let previewObjectUrl = '';
     let existingImageUrl = '';
 
+    function showStoreView({ reason = 'view-change' } = {}) {
+      console.log('[app] returning to storefront view', { reason });
+      storefrontView.classList.remove('hidden');
+      adminView.classList.add('hidden');
+      cartView.classList.add('hidden');
+      loginView.classList.add('hidden');
+      storeBtn.classList.add('active');
+      adminBtn.classList.remove('active');
+      productGrid.innerHTML = `
+        <div class="auth-status">
+          <span class="loader">
+            Cargando productos...
+            <span class="loader-dots" aria-hidden="true">
+              <span class="loader-dot"></span>
+              <span class="loader-dot"></span>
+              <span class="loader-dot"></span>
+            </span>
+          </span>
+        </div>
+      `;
+      loadProducts({ reason: `${reason}-view` })
+        .then(() => renderStorefront({ reason }))
+        .catch(error => {
+          console.error('[app] storefront render error', error);
+          productGrid.innerHTML = `<div class="auth-status">No se pudieron cargar los productos</div>`;
+        });
+    }
+
     function setActiveView(view, { reason = 'view-change' } = {}) {
-      const isStore = view === 'store';
+      if (view === 'store') {
+        showStoreView({ reason });
+        return;
+      }
       const isAdmin = view === 'admin';
       const isCart = view === 'cart';
       const isLogin = view === 'login';
-      storefrontView.classList.toggle('hidden', !isStore);
+      storefrontView.classList.toggle('hidden', true);
       adminView.classList.toggle('hidden', !isAdmin);
       cartView.classList.toggle('hidden', !isCart);
       loginView.classList.toggle('hidden', !isLogin);
-      storeBtn.classList.toggle('active', isStore);
+      storeBtn.classList.toggle('active', false);
       adminBtn.classList.toggle('active', isAdmin);
-      if (isStore) {
-        console.log('[app] navigating to storefront', { reason });
-        loadProducts({ reason: `${reason}-view` })
-          .then(() => renderStorefront({ reason }))
-          .catch(error => {
-            console.error('[app] storefront render error', error);
-            productGrid.innerHTML = `<div class="auth-status">No se pudieron cargar los productos</div>`;
-          });
+      if (isAdmin) {
+        console.log('[app] entering admin view', { reason });
       }
     }
 
@@ -836,7 +885,18 @@
       const filtered = products.filter(p => (p.title || '').toLowerCase().includes(query));
       if (filtered.length === 0) {
         if (productsLoadState.status === 'loading') {
-          productGrid.innerHTML = `<div class="auth-status">Cargando productos...</div>`;
+          productGrid.innerHTML = `
+            <div class="auth-status">
+              <span class="loader">
+                Cargando productos...
+                <span class="loader-dots" aria-hidden="true">
+                  <span class="loader-dot"></span>
+                  <span class="loader-dot"></span>
+                  <span class="loader-dot"></span>
+                </span>
+              </span>
+            </div>
+          `;
           console.log('[app] products count rendered', { count: 0, loading: true });
           console.log('[app] product render end', { count: 0, loading: true });
           return;
@@ -853,6 +913,10 @@
           console.log('[app] product render end', { count: 0, empty: true });
           return;
         }
+        productGrid.innerHTML = `<div class="auth-status">No hay resultados para tu búsqueda</div>`;
+        console.log('[app] products count rendered', { count: 0, filtered: true });
+        console.log('[app] product render end', { count: 0, filtered: true });
+        return;
       }
       productGrid.innerHTML = filtered.map(product => `
         <article class="card">
@@ -1098,7 +1162,7 @@
       showProductDetail(product);
     });
 
-    detailBack.addEventListener('click', showStorefrontList);
+    detailBack.addEventListener('click', () => setActiveView('store', { reason: 'detail-back' }));
 
     searchInput.addEventListener('input', () => {
       showStorefrontList();
