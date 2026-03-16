@@ -16,8 +16,8 @@
       --border: #d9d9d2;
       --shadow: 0 12px 30px rgba(0,0,0,0.12);
       --header-offset: 76px;
-      --filters-sticky-offset: calc(var(--header-offset) + 12px);
-      --filters-bg: rgba(255,255,255,0.88);
+      --filters-sticky-offset: var(--header-offset);
+      --filters-bg: rgba(255,255,255,0.92);
     }
     * { box-sizing: border-box; }
     html, body {
@@ -90,6 +90,11 @@
       max-width: 1200px;
       margin: 0 auto;
       padding: 28px 20px 80px;
+    }
+    .filters-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 12px 20px 0;
     }
     .container,
     #storefront-view,
@@ -164,10 +169,11 @@
       background: var(--filters-bg);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(217,217,210,0.85);
+      border: 1px solid rgba(217,217,210,0.9);
+      border-bottom: 1px solid rgba(217,217,210,0.95);
       border-radius: 16px;
       padding: 12px 16px;
-      box-shadow: 0 12px 28px rgba(18,18,18,0.08);
+      box-shadow: 0 10px 24px rgba(18,18,18,0.08);
       transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     }
     .filters-label {
@@ -185,10 +191,10 @@
     .filters-row .search {
       margin-left: 0;
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 10px;
-      width: min(720px, 100%);
-      flex: 1 1 360px;
+      width: min(900px, 100%);
+      flex: 1 1 440px;
     }
     .filters-row .search select {
       min-width: 0;
@@ -860,7 +866,7 @@
         height: 240px;
       }
       .filters-bar {
-        top: calc(var(--header-offset) + 8px);
+        top: var(--header-offset);
         margin-bottom: 18px;
       }
       .card-cta {
@@ -898,6 +904,39 @@
     </div>
   </header>
 
+  <div class="filters-container">
+    <div class="filters-bar">
+      <div class="filters-row">
+        <div class="filters-label">Filtros</div>
+        <div class="search">
+          <select id="category-filter" aria-label="Filtrar por categoría">
+            <option value="Todas">Todas</option>
+          </select>
+          <select id="gender-filter" aria-label="Filtrar por tipo">
+            <option value="Todas">Todas</option>
+            <option value="Hombre">Hombre</option>
+            <option value="Mujer">Mujer</option>
+          </select>
+          <select id="price-filter" aria-label="Ordenar por precio">
+            <option value="none">Ordenar por precio</option>
+            <option value="asc">Menor a mayor</option>
+            <option value="desc">Mayor a menor</option>
+          </select>
+          <select id="size-filter" aria-label="Filtrar por talle">
+            <option value="Todos">Todos</option>
+            <option value="XS">XS</option>
+            <option value="S">S</option>
+            <option value="M">M</option>
+            <option value="L">L</option>
+            <option value="XL">XL</option>
+            <option value="XXL">XXL</option>
+          </select>
+          <input id="search" type="text" placeholder="Buscar por título..." />
+        </div>
+      </div>
+    </div>
+  </div>
+
   <main class="container">
     <div class="nav">
       <button id="btn-store" class="active">Tienda</button>
@@ -906,27 +945,6 @@
 
     <section id="storefront-view">
       <div id="storefront-home">
-        <div class="filters-bar">
-          <div class="filters-row">
-            <div class="filters-label">Filtros</div>
-            <div class="search">
-            <select id="category-filter" aria-label="Filtrar por categoría">
-              <option value="Todas">Todas</option>
-            </select>
-            <select id="gender-filter" aria-label="Filtrar por tipo">
-              <option value="Todas">Todas</option>
-              <option value="Hombre">Hombre</option>
-              <option value="Mujer">Mujer</option>
-            </select>
-            <select id="price-filter" aria-label="Ordenar por precio">
-              <option value="none">Ordenar por precio</option>
-              <option value="asc">Menor a mayor</option>
-              <option value="desc">Mayor a menor</option>
-            </select>
-            <input id="search" type="text" placeholder="Buscar por título..." />
-            </div>
-          </div>
-        </div>
 
         <div class="carousel" data-carousel aria-label="Carrusel principal">
         <div class="carousel-track" data-carousel-track>
@@ -1239,6 +1257,7 @@
     const categoryFilter = document.getElementById('category-filter');
     const genderFilter = document.getElementById('gender-filter');
     const priceFilter = document.getElementById('price-filter');
+    const sizeFilter = document.getElementById('size-filter');
     const carousel = document.querySelector('[data-carousel]');
     const carouselTrack = document.querySelector('[data-carousel-track]');
     const carouselSlides = Array.from(document.querySelectorAll('[data-carousel-slide]'));
@@ -1659,6 +1678,7 @@
       const selectedCategory = categoryFilter?.value || 'Todas';
       const selectedGender = genderFilter?.value || 'Todas';
       const selectedPriceOrder = priceFilter?.value || 'none';
+      const selectedSize = sizeFilter?.value || 'Todos';
       const filtered = products.filter(product => {
         const matchesQuery = (product.title || '').toLowerCase().includes(query);
         if (!matchesQuery) return false;
@@ -1676,6 +1696,10 @@
           return productGender === 'Mujer' || productGender === 'Todas' || productGender === '';
         }
         return true;
+      }).filter(product => {
+        if (selectedSize === 'Todos') return true;
+        const stock = normalizeStockBySize(product);
+        return Number(stock[selectedSize] || 0) > 0;
       });
       const sorted = [...filtered];
       if (selectedPriceOrder === 'asc') {
@@ -1744,7 +1768,7 @@
     function renderStockRows(product) {
       const stock = normalizeStockBySize(product);
       const measurements = normalizeSizeMeasurements(product);
-      const sizes = Object.keys(stock);
+      const sizes = SIZE_KEYS.filter(size => Object.prototype.hasOwnProperty.call(stock, size));
       const hasStock = sizes.some(size => stock[size] > 0);
       if (!hasStock) {
         return `<div class="stock-empty">Sin stock</div>`;
@@ -2082,15 +2106,6 @@
         const id = quickButton.dataset.id;
         const product = products.find(p => String(p.id) === String(id));
         if (!product) return;
-        if (!currentUser?.id) {
-          alert('Iniciá sesión para agregar al carrito.');
-          return;
-        }
-        const quickSize = getQuickAddSize(product);
-        if (quickSize) {
-          await saveCartItem(product.id, quickSize, 1);
-          return;
-        }
         showProductDetail(product);
         return;
       }
@@ -2123,6 +2138,11 @@
     priceFilter?.addEventListener('change', () => {
       showStorefrontList();
       renderProducts({ reason: 'price-filter' });
+    });
+
+    sizeFilter?.addEventListener('change', () => {
+      showStorefrontList();
+      renderProducts({ reason: 'size-filter' });
     });
 
     const categoryCards = document.querySelectorAll('[data-category-card]');
@@ -2234,7 +2254,7 @@
 
     function updateDetailSizes(product) {
       const stock = normalizeStockBySize(product);
-      const availableSizes = Object.keys(stock).filter(size => stock[size] > 0);
+      const availableSizes = SIZE_KEYS.filter(size => Number(stock[size] || 0) > 0);
       console.log('[debug] available sizes:', availableSizes);
       detailSize.innerHTML = availableSizes.map(size => (
         `<option value="${size}">${size}</option>`
