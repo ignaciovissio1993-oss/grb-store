@@ -18,6 +18,7 @@
       --header-offset: 76px;
       --filters-sticky-offset: var(--header-offset);
       --filters-bg: rgba(255,255,255,0.92);
+      --filters-bar-height: 0px;
     }
     * { box-sizing: border-box; }
     html, body {
@@ -94,7 +95,7 @@
     .filters-container {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 12px 20px 0;
+      padding: calc(var(--filters-bar-height) + 12px) 20px 0;
     }
     .container,
     #storefront-view,
@@ -154,10 +155,13 @@
       box-shadow: var(--shadow);
     }
     .filters-bar {
-      position: sticky;
+      position: fixed;
       top: var(--filters-sticky-offset);
-      z-index: 9;
-      margin-bottom: 22px;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      margin-bottom: 0;
+      padding: 0 20px;
     }
     .filters-row {
       display: flex;
@@ -165,6 +169,8 @@
       align-items: center;
       gap: 14px;
       width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
       margin-bottom: 0;
       background: var(--filters-bg);
       backdrop-filter: blur(14px);
@@ -867,7 +873,7 @@
       }
       .filters-bar {
         top: var(--header-offset);
-        margin-bottom: 18px;
+        margin-bottom: 0;
       }
       .card-cta {
         opacity: 1;
@@ -1258,6 +1264,7 @@
     const genderFilter = document.getElementById('gender-filter');
     const priceFilter = document.getElementById('price-filter');
     const sizeFilter = document.getElementById('size-filter');
+    const filtersBar = document.querySelector('.filters-bar');
     const carousel = document.querySelector('[data-carousel]');
     const carouselTrack = document.querySelector('[data-carousel-track]');
     const carouselSlides = Array.from(document.querySelectorAll('[data-carousel-slide]'));
@@ -1331,6 +1338,19 @@
     if (typeof ResizeObserver !== 'undefined' && header) {
       const headerResizeObserver = new ResizeObserver(() => syncStickyOffset());
       headerResizeObserver.observe(header);
+    }
+
+    function syncFiltersBarHeight() {
+      if (!filtersBar) return;
+      const barHeight = Math.ceil(filtersBar.getBoundingClientRect().height);
+      document.documentElement.style.setProperty('--filters-bar-height', `${barHeight}px`);
+    }
+
+    syncFiltersBarHeight();
+    window.addEventListener('resize', syncFiltersBarHeight);
+    if (typeof ResizeObserver !== 'undefined' && filtersBar) {
+      const filtersResizeObserver = new ResizeObserver(() => syncFiltersBarHeight());
+      filtersResizeObserver.observe(filtersBar);
     }
 
     function setCarouselIndex(nextIndex) {
@@ -1689,13 +1709,7 @@
       }).filter(product => {
         if (selectedGender === 'Todas') return true;
         const productGender = (product.target_gender || '').trim();
-        if (selectedGender === 'Hombre') {
-          return productGender === 'Hombre' || productGender === 'Todas' || productGender === '';
-        }
-        if (selectedGender === 'Mujer') {
-          return productGender === 'Mujer' || productGender === 'Todas' || productGender === '';
-        }
-        return true;
+        return productGender === selectedGender;
       }).filter(product => {
         if (selectedSize === 'Todos') return true;
         const stock = normalizeStockBySize(product);
