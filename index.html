@@ -841,16 +841,27 @@
     </div>
 
     <section id="storefront-view">
-      <div class="filters-row">
-        <div class="search">
-          <select id="category-filter" aria-label="Filtrar por categoría">
-            <option value="Todas">Todas</option>
-          </select>
-          <input id="search" type="text" placeholder="Buscar por título..." />
+      <div id="storefront-home">
+        <div class="filters-row">
+          <div class="search">
+            <select id="category-filter" aria-label="Filtrar por categoría">
+              <option value="Todas">Todas</option>
+            </select>
+            <select id="gender-filter" aria-label="Filtrar por tipo">
+              <option value="Todas">Todas</option>
+              <option value="Hombre">Hombre</option>
+              <option value="Mujer">Mujer</option>
+            </select>
+            <select id="price-filter" aria-label="Ordenar por precio">
+              <option value="none">Ordenar por precio</option>
+              <option value="asc">Menor a mayor</option>
+              <option value="desc">Mayor a menor</option>
+            </select>
+            <input id="search" type="text" placeholder="Buscar por título..." />
+          </div>
         </div>
-      </div>
 
-      <div class="carousel" data-carousel aria-label="Carrusel principal">
+        <div class="carousel" data-carousel aria-label="Carrusel principal">
         <div class="carousel-track" data-carousel-track>
           <div class="carousel-slide" data-carousel-slide>
             <img
@@ -880,13 +891,13 @@
         </div>
       </div>
 
-      <div id="storefront-list">
-        <div class="section-title">Productos</div>
-        <div id="product-grid" class="grid"></div>
-      </div>
+        <div id="storefront-list">
+          <div class="section-title">Productos</div>
+          <div id="product-grid" class="grid"></div>
+        </div>
 
-      <div class="section-title">Categorías destacadas</div>
-      <div class="category-grid">
+        <div class="section-title">Categorías destacadas</div>
+        <div class="category-grid">
         <a
           class="category-card"
           data-category-card
@@ -919,20 +930,21 @@
         </a>
       </div>
 
-      <div class="section-title">Nuestro local</div>
-      <a
-        class="local-card"
-        href="https://maps.app.goo.gl/WH6f6YpUDKEm6yfH8"
-        target="_blank"
-        rel="noopener noreferrer"
-        style="background-image: url('https://images.unsplash.com/photo-1768758533474-5cd148638a98?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1600');"
-        aria-label="Abrir ubicación del local en Google Maps"
-      >
-        <div class="local-content">
-          <h2 class="local-title">Nuestro local</h2>
-          <span class="local-cta">Ver ubicación ↗</span>
-        </div>
-      </a>
+        <div class="section-title">Nuestro local</div>
+        <a
+          class="local-card"
+          href="https://maps.app.goo.gl/WH6f6YpUDKEm6yfH8"
+          target="_blank"
+          rel="noopener noreferrer"
+          style="background-image: url('https://images.unsplash.com/photo-1768758533474-5cd148638a98?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1600');"
+          aria-label="Abrir ubicación del local en Google Maps"
+        >
+          <div class="local-content">
+            <h2 class="local-title">Nuestro local</h2>
+            <span class="local-cta">Ver ubicación ↗</span>
+          </div>
+        </a>
+      </div>
 
       <div id="product-detail" class="detail-view hidden">
         <div class="section-title">Detalle del producto</div>
@@ -983,6 +995,13 @@
             <label for="category">Categoría</label>
             <select id="category">
               <option value="">Sin categoría</option>
+            </select>
+
+            <label for="target-gender">Tipo / Género</label>
+            <select id="target-gender">
+              <option value="Todas">Todas</option>
+              <option value="Hombre">Hombre</option>
+              <option value="Mujer">Mujer</option>
             </select>
 
             <label for="imageFile">Imagen del producto (subir)</label>
@@ -1088,6 +1107,7 @@
     const adminView = document.getElementById('admin-view');
     const cartView = document.getElementById('cart-view');
     const loginView = document.getElementById('login-view');
+    const storefrontHome = document.getElementById('storefront-home');
     const storefrontList = document.getElementById('storefront-list');
     const productDetail = document.getElementById('product-detail');
     const productGrid = document.getElementById('product-grid');
@@ -1127,6 +1147,7 @@
     const descField = document.getElementById('description');
     const priceField = document.getElementById('price');
     const categoryField = document.getElementById('category');
+    const targetGenderField = document.getElementById('target-gender');
     const imageField = document.getElementById('imageUrl');
     const imageFileField = document.getElementById('imageFile');
     const imagePreview = document.getElementById('imagePreview');
@@ -1139,6 +1160,8 @@
     const sizeContainer = document.getElementById('sizes');
     const measurementsContainer = document.getElementById('size-measurements');
     const categoryFilter = document.getElementById('category-filter');
+    const genderFilter = document.getElementById('gender-filter');
+    const priceFilter = document.getElementById('price-filter');
     const carousel = document.querySelector('[data-carousel]');
     const carouselTrack = document.querySelector('[data-carousel-track]');
     const carouselSlides = Array.from(document.querySelectorAll('[data-carousel-slide]'));
@@ -1337,6 +1360,7 @@
     function showStorefrontList() {
       activeProductId = null;
       productDetail.classList.add('hidden');
+      storefrontHome?.classList.remove('hidden');
       storefrontList.classList.remove('hidden');
     }
 
@@ -1430,6 +1454,7 @@
       form.reset();
       setStockBySize(null);
       if (categoryField) categoryField.value = '';
+      if (targetGenderField) targetGenderField.value = 'Todas';
       setSizeMeasurements(null);
       selectedImageFile = null;
       existingImageUrl = '';
@@ -1542,14 +1567,33 @@
       console.log('[app] product render start', { reason, status: productsLoadState.status });
       const query = searchInput.value.toLowerCase();
       const selectedCategory = categoryFilter?.value || 'Todas';
+      const selectedGender = genderFilter?.value || 'Todas';
+      const selectedPriceOrder = priceFilter?.value || 'none';
       const filtered = products.filter(product => {
         const matchesQuery = (product.title || '').toLowerCase().includes(query);
         if (!matchesQuery) return false;
         if (selectedCategory === 'Todas') return true;
         const categoryValue = (product.category || '').trim();
-        return categoryValue === selectedCategory;
+        if (categoryValue !== selectedCategory) return false;
+        return true;
+      }).filter(product => {
+        if (selectedGender === 'Todas') return true;
+        const productGender = (product.target_gender || '').trim();
+        if (selectedGender === 'Hombre') {
+          return productGender === 'Hombre' || productGender === 'Todas' || productGender === '';
+        }
+        if (selectedGender === 'Mujer') {
+          return productGender === 'Mujer' || productGender === 'Todas' || productGender === '';
+        }
+        return true;
       });
-      if (filtered.length === 0) {
+      const sorted = [...filtered];
+      if (selectedPriceOrder === 'asc') {
+        sorted.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+      } else if (selectedPriceOrder === 'desc') {
+        sorted.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+      }
+      if (sorted.length === 0) {
         if (productsLoadState.status === 'loading') {
           productGrid.innerHTML = `
             <div class="auth-status">
@@ -1580,11 +1624,11 @@
           return;
         }
         productGrid.innerHTML = `<div class="auth-status">No hay resultados para tu búsqueda</div>`;
-        console.log('[app] products count rendered', { count: 0, filtered: true });
-        console.log('[app] product render end', { count: 0, filtered: true });
+          console.log('[app] products count rendered', { count: 0, filtered: true });
+          console.log('[app] product render end', { count: 0, filtered: true });
         return;
       }
-      productGrid.innerHTML = filtered.map(product => `
+      productGrid.innerHTML = sorted.map(product => `
         <article class="card">
           <button class="product-image-button" data-id="${product.id}" aria-label="Ver detalle de ${product.title}">
             <div class="image-wrap">
@@ -1603,8 +1647,8 @@
           </div>
         </article>
       `).join('');
-      console.log('[app] products count rendered', { count: filtered.length, error: false });
-      console.log('[app] product render end', { count: filtered.length, error: false });
+      console.log('[app] products count rendered', { count: sorted.length, error: false });
+      console.log('[app] product render end', { count: sorted.length, error: false });
     }
 
     function renderStockRows(product) {
@@ -1661,6 +1705,7 @@
       detailDescription.textContent = product.description;
       detailStock.innerHTML = renderStockRows(product);
       updateDetailSizes(product);
+      storefrontHome?.classList.add('hidden');
       storefrontList.classList.add('hidden');
       productDetail.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1686,6 +1731,7 @@
       detailSize.disabled = true;
       detailQty.disabled = true;
       addToCartBtn.disabled = true;
+      storefrontHome?.classList.add('hidden');
       storefrontList.classList.add('hidden');
       productDetail.classList.remove('hidden');
       console.log('[app] detail render fallback');
@@ -1722,6 +1768,9 @@
         descField.value = product.description;
         priceField.value = product.price;
         categoryField.value = product.category || '';
+        if (targetGenderField) {
+          targetGenderField.value = product.target_gender || 'Todas';
+        }
         existingImageUrl = product.image_url || '';
         existingExtraImageUrl1 = product.extra_image_url_1 || '';
         existingExtraImageUrl2 = product.extra_image_url_2 || '';
@@ -1890,6 +1939,7 @@
 
       const sizeMeasurements = getSizeMeasurements();
       const categoryValue = categoryField.value.trim();
+      const targetGenderValue = (targetGenderField?.value || '').trim();
       const payload = {
         title: titleField.value.trim(),
         description: descField.value.trim(),
@@ -1899,7 +1949,8 @@
         extra_image_url_2: extraImageUrl2 || null,
         stock_by_size: getStockBySize(),
         size_measurements: sizeMeasurements,
-        category: categoryValue || null
+        category: categoryValue || null,
+        target_gender: targetGenderValue || null
       };
 
       if (!payload.title || !payload.description || !payload.image_url) {
@@ -1972,6 +2023,16 @@
     categoryFilter.addEventListener('change', () => {
       showStorefrontList();
       renderProducts({ reason: 'category-filter' });
+    });
+
+    genderFilter?.addEventListener('change', () => {
+      showStorefrontList();
+      renderProducts({ reason: 'gender-filter' });
+    });
+
+    priceFilter?.addEventListener('change', () => {
+      showStorefrontList();
+      renderProducts({ reason: 'price-filter' });
     });
 
     const categoryCards = document.querySelectorAll('[data-category-card]');
