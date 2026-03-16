@@ -17,6 +17,7 @@
       --shadow: 0 12px 30px rgba(0,0,0,0.12);
       --header-offset: 76px;
       --filters-sticky-offset: calc(var(--header-offset) + 12px);
+      --filters-bg: rgba(255,255,255,0.88);
     }
     * { box-sizing: border-box; }
     html, body {
@@ -90,6 +91,11 @@
       margin: 0 auto;
       padding: 28px 20px 80px;
     }
+    .container,
+    #storefront-view,
+    #storefront-home {
+      overflow: visible;
+    }
     .header-actions {
       display: flex;
       align-items: center;
@@ -142,24 +148,39 @@
       border-color: transparent;
       box-shadow: var(--shadow);
     }
+    .filters-bar {
+      position: sticky;
+      top: var(--filters-sticky-offset);
+      z-index: 9;
+      margin-bottom: 22px;
+    }
     .filters-row {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 14px;
       width: 100%;
-      margin-bottom: 22px;
-      position: sticky;
-      top: var(--filters-sticky-offset);
-      z-index: 9;
-      background: rgba(255,255,255,0.82);
+      margin-bottom: 0;
+      background: var(--filters-bg);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(217,217,210,0.9);
-      border-radius: 18px;
-      padding: 14px 16px;
-      box-shadow: 0 10px 28px rgba(18,18,18,0.08);
+      border: 1px solid rgba(217,217,210,0.85);
+      border-radius: 16px;
+      padding: 12px 16px;
+      box-shadow: 0 12px 28px rgba(18,18,18,0.08);
       transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .filters-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--muted);
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.8);
+      border: 1px solid rgba(217,217,210,0.7);
+      flex: 0 0 auto;
     }
     .filters-row .search {
       margin-left: 0;
@@ -167,6 +188,7 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
       width: min(720px, 100%);
+      flex: 1 1 360px;
     }
     .filters-row .search select {
       min-width: 0;
@@ -808,7 +830,10 @@
         flex-direction: column;
         align-items: stretch;
         padding: 12px;
-        border-radius: 16px;
+        border-radius: 14px;
+      }
+      .filters-label {
+        align-self: flex-start;
       }
       .filters-row .search { grid-template-columns: 1fr; }
       .detail-card { grid-template-columns: 1fr; }
@@ -834,7 +859,7 @@
       .carousel {
         height: 240px;
       }
-      .filters-row {
+      .filters-bar {
         top: calc(var(--header-offset) + 8px);
         margin-bottom: 18px;
       }
@@ -881,8 +906,10 @@
 
     <section id="storefront-view">
       <div id="storefront-home">
-        <div class="filters-row">
-          <div class="search">
+        <div class="filters-bar">
+          <div class="filters-row">
+            <div class="filters-label">Filtros</div>
+            <div class="search">
             <select id="category-filter" aria-label="Filtrar por categoría">
               <option value="Todas">Todas</option>
             </select>
@@ -897,6 +924,7 @@
               <option value="desc">Mayor a menor</option>
             </select>
             <input id="search" type="text" placeholder="Buscar por título..." />
+            </div>
           </div>
         </div>
 
@@ -1138,6 +1166,7 @@
     );
 
     const header = document.querySelector('header');
+    const root = document.documentElement;
     const storeBtn = document.getElementById('btn-store');
     const brandLink = document.getElementById('brand-link');
     const adminBtn = document.getElementById('btn-admin');
@@ -1169,6 +1198,14 @@
     const cartEmpty = document.getElementById('cart-empty');
     const cartBack = document.getElementById('cart-back');
     const cartCount = document.getElementById('cart-count');
+
+    const updateHeaderOffset = () => {
+      const headerHeight = header?.offsetHeight || 0;
+      root.style.setProperty('--header-offset', `${headerHeight}px`);
+    };
+
+    updateHeaderOffset();
+    window.addEventListener('resize', updateHeaderOffset);
 
     const authEmail = document.getElementById('auth-email');
     const authPassword = document.getElementById('auth-password');
