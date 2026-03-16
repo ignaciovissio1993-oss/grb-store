@@ -30,23 +30,34 @@
       font-family: "Space Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
       background: radial-gradient(1200px 800px at 20% -10%, #ffffff 0%, #f4f4f1 55%, #efefea 100%);
       color: var(--text);
+      padding-top: var(--header-offset);
+    }
+    .topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 30;
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(217,217,210,0.85);
+      box-shadow: 0 8px 20px rgba(18,18,18,0.08);
     }
     header {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      backdrop-filter: blur(10px);
-      background: rgba(255,255,255,0.85);
-      border-bottom: 1px solid var(--border);
+      position: static;
+      backdrop-filter: none;
+      background: transparent;
+      border-bottom: none;
     }
     .header-inner {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 16px 20px;
+      padding: 10px 20px 6px;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
     }
     .logo {
       width: 44px;
@@ -90,12 +101,12 @@
     .container {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 28px 20px 80px;
+      padding: 22px 20px 80px;
     }
     .filters-container {
       max-width: 1200px;
       margin: 0 auto;
-      padding: calc(var(--filters-bar-height) + 12px) 20px 0;
+      padding: 0 20px 10px;
     }
     .container,
     #storefront-view,
@@ -111,12 +122,12 @@
       background: var(--panel);
       border: 1px solid var(--border);
       color: var(--text);
-      padding: 8px 12px;
+      padding: 6px 10px;
       border-radius: 999px;
       cursor: pointer;
       text-transform: uppercase;
-      font-size: 0.7rem;
-      letter-spacing: 0.12em;
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
     }
     .cart-count {
       display: inline-grid;
@@ -155,13 +166,11 @@
       box-shadow: var(--shadow);
     }
     .filters-bar {
-      position: fixed;
-      top: var(--filters-sticky-offset);
-      left: 0;
-      right: 0;
+      position: static;
       z-index: 20;
       margin-bottom: 0;
-      padding: 0 20px;
+      padding: 0;
+      border-top: 1px solid rgba(217,217,210,0.6);
     }
     .filters-row {
       display: flex;
@@ -172,26 +181,23 @@
       max-width: 1200px;
       margin: 0 auto;
       margin-bottom: 0;
-      background: var(--filters-bg);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(217,217,210,0.9);
-      border-bottom: 1px solid rgba(217,217,210,0.95);
-      border-radius: 16px;
-      padding: 12px 16px;
-      box-shadow: 0 10px 24px rgba(18,18,18,0.08);
-      transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 8px 0 10px;
+      box-shadow: none;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
     }
     .filters-label {
-      font-size: 0.7rem;
-      letter-spacing: 0.22em;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
       font-weight: 700;
       color: var(--muted);
-      padding: 6px 10px;
+      padding: 4px 8px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.8);
-      border: 1px solid rgba(217,217,210,0.7);
+      background: rgba(255,255,255,0.6);
+      border: 1px solid rgba(217,217,210,0.6);
       flex: 0 0 auto;
     }
     .filters-row .search {
@@ -208,6 +214,10 @@
       border-color: rgba(217,217,210,0.95);
       border-radius: 12px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.65);
+    }
+    .filters-row .search select,
+    .filters-row .search input {
+      padding: 8px 10px;
     }
     .filters-row .search select:focus {
       outline: none;
@@ -841,8 +851,8 @@
       .filters-row {
         flex-direction: column;
         align-items: stretch;
-        padding: 12px;
-        border-radius: 14px;
+        padding: 10px 0 12px;
+        border-radius: 0;
       }
       .filters-label {
         align-self: flex-start;
@@ -871,10 +881,6 @@
       .carousel {
         height: 240px;
       }
-      .filters-bar {
-        top: var(--header-offset);
-        margin-bottom: 0;
-      }
       .card-cta {
         opacity: 1;
         transform: none;
@@ -894,50 +900,52 @@
   </style>
 </head>
 <body>
-  <header>
-    <div class="header-inner">
-      <button id="brand-link" class="brand-link" type="button">
-        <img src="logo.jpg" alt="Logo" class="logo" />
-        <div class="brand">TIENDA DE ROPA PRUEBA GITHUB</div>
-      </button>
-      <div class="pill">TIENDA DEMO LOCAL</div>
-      <div class="header-actions">
-        <button id="btn-account" class="header-btn" type="button">Cuenta</button>
-        <button id="btn-header-cart" class="header-btn" type="button">
-          Carrito <span id="cart-count" class="cart-count">0</span>
+  <div class="topbar">
+    <header>
+      <div class="header-inner">
+        <button id="brand-link" class="brand-link" type="button">
+          <img src="logo.jpg" alt="Logo" class="logo" />
+          <div class="brand">TIENDA DE ROPA PRUEBA GITHUB</div>
         </button>
+        <div class="pill">TIENDA DEMO LOCAL</div>
+        <div class="header-actions">
+          <button id="btn-account" class="header-btn" type="button">Cuenta</button>
+          <button id="btn-header-cart" class="header-btn" type="button">
+            Carrito <span id="cart-count" class="cart-count">0</span>
+          </button>
+        </div>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <div class="filters-container">
-    <div class="filters-bar">
-      <div class="filters-row">
-        <div class="filters-label">Filtros</div>
-        <div class="search">
-          <select id="category-filter" aria-label="Filtrar por categoría">
-            <option value="Todas">Todas</option>
-          </select>
-          <select id="gender-filter" aria-label="Filtrar por tipo">
-            <option value="Todas">Todas</option>
-            <option value="Hombre">Hombre</option>
-            <option value="Mujer">Mujer</option>
-          </select>
-          <select id="price-filter" aria-label="Ordenar por precio">
-            <option value="none">Ordenar por precio</option>
-            <option value="asc">Menor a mayor</option>
-            <option value="desc">Mayor a menor</option>
-          </select>
-          <select id="size-filter" aria-label="Filtrar por talle">
-            <option value="Todos">Todos</option>
-            <option value="XS">XS</option>
-            <option value="S">S</option>
-            <option value="M">M</option>
-            <option value="L">L</option>
-            <option value="XL">XL</option>
-            <option value="XXL">XXL</option>
-          </select>
-          <input id="search" type="text" placeholder="Buscar por título..." />
+    <div class="filters-container">
+      <div class="filters-bar">
+        <div class="filters-row">
+          <div class="filters-label">Filtros</div>
+          <div class="search">
+            <select id="category-filter" aria-label="Filtrar por categoría">
+              <option value="Todas">Todas</option>
+            </select>
+            <select id="gender-filter" aria-label="Filtrar por tipo">
+              <option value="Todas">Todas</option>
+              <option value="Hombre">Hombre</option>
+              <option value="Mujer">Mujer</option>
+            </select>
+            <select id="price-filter" aria-label="Ordenar por precio">
+              <option value="none">Ordenar por precio</option>
+              <option value="asc">Menor a mayor</option>
+              <option value="desc">Mayor a menor</option>
+            </select>
+            <select id="size-filter" aria-label="Filtrar por talle">
+              <option value="Todos">Todos</option>
+              <option value="XS">XS</option>
+              <option value="S">S</option>
+              <option value="M">M</option>
+              <option value="L">L</option>
+              <option value="XL">XL</option>
+              <option value="XXL">XXL</option>
+            </select>
+            <input id="search" type="text" placeholder="Buscar por título..." />
+          </div>
         </div>
       </div>
     </div>
@@ -1189,7 +1197,7 @@
       "sb_publishable_neZQr47vRyD3v5iExtxvKg_0O9G1wC8"
     );
 
-    const header = document.querySelector('header');
+    const header = document.querySelector('.topbar');
     const root = document.documentElement;
     const storeBtn = document.getElementById('btn-store');
     const brandLink = document.getElementById('brand-link');
