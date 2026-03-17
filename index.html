@@ -172,6 +172,57 @@
       padding: 0;
       border-top: 1px solid rgba(217,217,210,0.6);
     }
+    .filters-mobile-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .filters-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .filters-panel {
+      display: block;
+    }
+    .filters-panel-header {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .filters-panel-title {
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .filters-close-btn {
+      border: 1px solid var(--border);
+      background: #f3f3ef;
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .filters-overlay {
+      display: none;
+    }
     .filters-row {
       display: flex;
       flex-wrap: wrap;
@@ -862,6 +913,93 @@
       .detail-image { height: 320px; }
       .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
+    @media (max-width: 768px) {
+      :root {
+        --filters-mobile-height: 0px;
+      }
+      body {
+        padding-top: calc(var(--header-offset) + var(--filters-mobile-height));
+      }
+      .header-inner {
+        padding: 6px 16px 4px;
+        gap: 8px;
+      }
+      .logo {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+      }
+      .brand {
+        font-size: 0.98rem;
+        letter-spacing: 0.05em;
+      }
+      .pill {
+        padding: 4px 8px;
+        font-size: 0.65rem;
+      }
+      .header-actions {
+        gap: 6px;
+      }
+      .header-btn {
+        padding: 5px 8px;
+        font-size: 0.6rem;
+      }
+      .filters-container {
+        padding: 6px 16px 10px;
+      }
+      .filters-mobile-bar {
+        display: flex;
+      }
+      .filters-panel {
+        display: none;
+        margin-top: 8px;
+        background: var(--panel);
+        border: 1px solid rgba(217,217,210,0.9);
+        border-radius: 14px;
+        box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+        padding: 10px 10px 12px;
+        position: relative;
+        z-index: 26;
+      }
+      body.filters-open .filters-panel {
+        display: block;
+      }
+      .filters-panel-header {
+        display: flex;
+      }
+      .filters-overlay {
+        display: none;
+      }
+      body.filters-open .filters-overlay {
+        display: block;
+        position: fixed;
+        top: calc(var(--header-offset) + var(--filters-mobile-height));
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(15, 15, 15, 0.08);
+        z-index: 25;
+      }
+      .filters-bar {
+        border-top: none;
+      }
+      .filters-row {
+        padding: 6px 0 6px;
+        gap: 8px;
+      }
+      .filters-label {
+        display: none;
+      }
+      .filters-row .search {
+        gap: 8px;
+      }
+      .filters-row .search select,
+      .filters-row .search input {
+        padding: 6px 8px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+      }
+    }
     @media (max-width: 640px) {
       .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
       .image-wrap { height: 200px; }
@@ -918,33 +1056,45 @@
     </header>
 
     <div class="filters-container">
-      <div class="filters-bar">
-        <div class="filters-row">
-          <div class="filters-label">Filtros</div>
-          <div class="search">
-            <select id="category-filter" aria-label="Filtrar por categoría">
-              <option value="Todas">Todas</option>
-            </select>
-            <select id="gender-filter" aria-label="Filtrar por tipo">
-              <option value="Todas">Todas</option>
-              <option value="Hombre">Hombre</option>
-              <option value="Mujer">Mujer</option>
-            </select>
-            <select id="price-filter" aria-label="Ordenar por precio">
-              <option value="none">Ordenar por precio</option>
-              <option value="asc">Menor a mayor</option>
-              <option value="desc">Mayor a menor</option>
-            </select>
-            <select id="size-filter" aria-label="Filtrar por talle">
-              <option value="Todos">Todos</option>
-              <option value="XS">XS</option>
-              <option value="S">S</option>
-              <option value="M">M</option>
-              <option value="L">L</option>
-              <option value="XL">XL</option>
-              <option value="XXL">XXL</option>
-            </select>
-            <input id="search" type="text" placeholder="Buscar por título..." />
+      <div class="filters-mobile-bar">
+        <button id="filters-toggle" class="filters-toggle-btn" type="button" aria-expanded="false" aria-controls="filters-panel">
+          FILTROS
+        </button>
+      </div>
+      <div id="filters-overlay" class="filters-overlay" aria-hidden="true"></div>
+      <div id="filters-panel" class="filters-panel" role="dialog" aria-label="Filtros">
+        <div class="filters-panel-header">
+          <span class="filters-panel-title">Filtros</span>
+          <button id="filters-close" class="filters-close-btn" type="button">Cerrar</button>
+        </div>
+        <div class="filters-bar">
+          <div class="filters-row">
+            <div class="filters-label">Filtros</div>
+            <div class="search">
+              <select id="category-filter" aria-label="Filtrar por categoría">
+                <option value="Todas">Todas</option>
+              </select>
+              <select id="gender-filter" aria-label="Filtrar por tipo">
+                <option value="Todas">Todas</option>
+                <option value="Hombre">Hombre</option>
+                <option value="Mujer">Mujer</option>
+              </select>
+              <select id="price-filter" aria-label="Ordenar por precio">
+                <option value="none">Ordenar por precio</option>
+                <option value="asc">Menor a mayor</option>
+                <option value="desc">Mayor a menor</option>
+              </select>
+              <select id="size-filter" aria-label="Filtrar por talle">
+                <option value="Todos">Todos</option>
+                <option value="XS">XS</option>
+                <option value="S">S</option>
+                <option value="M">M</option>
+                <option value="L">L</option>
+                <option value="XL">XL</option>
+                <option value="XXL">XXL</option>
+              </select>
+              <input id="search" type="text" placeholder="Buscar por título..." />
+            </div>
           </div>
         </div>
       </div>
@@ -1272,7 +1422,11 @@
     const genderFilter = document.getElementById('gender-filter');
     const priceFilter = document.getElementById('price-filter');
     const sizeFilter = document.getElementById('size-filter');
+    const filtersContainer = document.querySelector('.filters-container');
     const filtersBar = document.querySelector('.filters-bar');
+    const filtersToggle = document.getElementById('filters-toggle');
+    const filtersClose = document.getElementById('filters-close');
+    const filtersOverlay = document.getElementById('filters-overlay');
     const carousel = document.querySelector('[data-carousel]');
     const carouselTrack = document.querySelector('[data-carousel-track]');
     const carouselSlides = Array.from(document.querySelectorAll('[data-carousel-slide]'));
@@ -1360,6 +1514,39 @@
       const filtersResizeObserver = new ResizeObserver(() => syncFiltersBarHeight());
       filtersResizeObserver.observe(filtersBar);
     }
+
+    function syncFiltersContainerHeight() {
+      if (!filtersContainer) return;
+      const containerHeight = Math.ceil(filtersContainer.getBoundingClientRect().height);
+      document.documentElement.style.setProperty('--filters-mobile-height', `${containerHeight}px`);
+    }
+
+    syncFiltersContainerHeight();
+    window.addEventListener('resize', syncFiltersContainerHeight);
+    if (typeof ResizeObserver !== 'undefined' && filtersContainer) {
+      const filtersContainerObserver = new ResizeObserver(() => syncFiltersContainerHeight());
+      filtersContainerObserver.observe(filtersContainer);
+    }
+
+    function setFiltersOpen(isOpen) {
+      document.body.classList.toggle('filters-open', isOpen);
+      if (filtersToggle) {
+        filtersToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      }
+      syncFiltersContainerHeight();
+    }
+
+    filtersToggle?.addEventListener('click', () => {
+      const isOpen = document.body.classList.contains('filters-open');
+      setFiltersOpen(!isOpen);
+    });
+    filtersClose?.addEventListener('click', () => setFiltersOpen(false));
+    filtersOverlay?.addEventListener('click', () => setFiltersOpen(false));
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        setFiltersOpen(false);
+      }
+    });
 
     function setCarouselIndex(nextIndex) {
       if (!carouselTrack || carouselSlides.length === 0) return;
