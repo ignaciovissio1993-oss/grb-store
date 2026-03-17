@@ -542,6 +542,61 @@
       display: block;
       transition: transform 0.35s ease;
     }
+    .image-wrap.is-slider {
+      background: #f1f1ec;
+    }
+    .card-slider-track {
+      display: flex;
+      height: 100%;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+    .card-slider-track::-webkit-scrollbar { display: none; }
+    .card-slide {
+      flex: 0 0 100%;
+      height: 100%;
+      scroll-snap-align: start;
+    }
+    .card-slider-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.7);
+      background: rgba(10,10,10,0.55);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      z-index: 2;
+    }
+    .card-slider-nav.prev { left: 8px; }
+    .card-slider-nav.next { right: 8px; }
+    .card-slider-dots {
+      position: absolute;
+      left: 50%;
+      bottom: 8px;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+      z-index: 2;
+    }
+    .card-slider-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.2);
+      background: rgba(255,255,255,0.7);
+      cursor: pointer;
+    }
+    .card-slider-dot.active {
+      background: var(--accent);
+      transform: scale(1.15);
+    }
     .image-wrap .secondary {
       position: absolute;
       inset: 0;
@@ -616,6 +671,18 @@
       font-size: 0.8rem;
       color: var(--muted);
       margin: 12px 0 6px;
+    }
+    .checkbox-field {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 14px 0 6px;
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+    .checkbox-field input {
+      width: 18px;
+      height: 18px;
     }
     input, textarea {
       width: 100%;
@@ -1168,6 +1235,11 @@
         </div>
       </div>
 
+        <div id="featured-section" class="hidden">
+          <div class="section-title">Productos promocionados</div>
+          <div id="featured-grid" class="grid"></div>
+        </div>
+
         <div id="storefront-list">
           <div class="section-title">Productos</div>
           <div id="product-grid" class="grid"></div>
@@ -1302,6 +1374,11 @@
             <label for="extraImageUrl2">URL imagen extra 2 (opcional)</label>
             <input id="extraImageUrl2" placeholder="https://..." />
 
+            <label class="checkbox-field" for="is-featured">
+              <input id="is-featured" type="checkbox" />
+              Producto promocionado
+            </label>
+
             <label>Stock por talle</label>
             <div class="size-options" id="sizes">
               <label>XS <input type="number" min="0" step="1" data-size="XS" value="0" /></label>
@@ -1388,6 +1465,8 @@
     const loginView = document.getElementById('login-view');
     const storefrontHome = document.getElementById('storefront-home');
     const storefrontList = document.getElementById('storefront-list');
+    const featuredSection = document.getElementById('featured-section');
+    const featuredGrid = document.getElementById('featured-grid');
     const productDetail = document.getElementById('product-detail');
     const productGrid = document.getElementById('product-grid');
     const adminList = document.getElementById('admin-list');
@@ -1440,6 +1519,7 @@
     const priceField = document.getElementById('price');
     const categoryField = document.getElementById('category');
     const targetGenderField = document.getElementById('target-gender');
+    const featuredField = document.getElementById('is-featured');
     const imageField = document.getElementById('imageUrl');
     const imageFileField = document.getElementById('imageFile');
     const imagePreview = document.getElementById('imagePreview');
@@ -1812,6 +1892,7 @@
       setStockBySize(null);
       if (categoryField) categoryField.value = '';
       if (targetGenderField) targetGenderField.value = 'Todas';
+      if (featuredField) featuredField.checked = false;
       setSizeMeasurements(null);
       selectedImageFile = null;
       existingImageUrl = '';
@@ -1846,6 +1927,89 @@
       adminMessage.textContent = message || '';
       adminMessage.classList.remove('success', 'error');
       if (message && type) adminMessage.classList.add(type);
+    }
+
+    function getProductImages(product, { includeFallback = false } = {}) {
+      const images = [
+        product?.image_url,
+        product?.extra_image_url_1,
+        product?.extra_image_url_2
+      ].map(value => typeof value === 'string' ? value.trim() : value).filter(Boolean);
+      if (images.length === 0 && includeFallback) {
+        images.push(FALLBACK_IMAGE);
+      }
+      return images;
+    }
+
+    function renderCardImageSlider(images, title) {
+      const slides = images.map((url, index) => `
+        <div class="card-slide">
+          <img src="${url}" alt="${title} ${index + 1}" onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}';" />
+        </div>
+      `).join('');
+      const dots = images.map((_, index) => `
+        <span class="card-slider-dot ${index === 0 ? 'active' : ''}" data-slider-dot data-slider-index="${index}" aria-label="Ver imagen ${index + 1}"></span>
+      `).join('');
+      return `
+        <div class="image-wrap is-slider">
+          <div class="card-slider-track" data-slider-track data-slider-count="${images.length}" data-slider-index="0">
+            ${slides}
+          </div>
+          <span class="card-slider-nav prev" data-slider-action="prev" aria-label="Imagen anterior">‹</span>
+          <span class="card-slider-nav next" data-slider-action="next" aria-label="Imagen siguiente">›</span>
+          <div class="card-slider-dots" role="tablist" aria-label="Indicadores de imágenes">
+            ${dots}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProductCard(product) {
+      const images = getProductImages(product);
+      if (images.length === 0) {
+        images.push(FALLBACK_IMAGE);
+      }
+      const mediaMarkup = images.length > 1
+        ? renderCardImageSlider(images, product.title || 'Producto')
+        : `
+          <div class="image-wrap">
+            <img class="primary" src="${images[0]}" alt="${product.title || 'Producto'}" onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}';" />
+          </div>
+        `;
+      return `
+        <article class="card">
+          <button class="product-image-button" data-id="${product.id}" aria-label="Ver detalle de ${product.title}">
+            ${mediaMarkup}
+          </button>
+          <div class="card-body">
+            <strong>${product.title}</strong>
+            <div class="price">$${Number(product.price).toFixed(2)}</div>
+            <div>${summarizeDescription(product.description)}</div>
+          </div>
+          <div class="card-cta">
+            <button class="btn primary card-cta-btn" data-action="add-to-cart" data-id="${product.id}" type="button">
+              Agregar al carrito
+            </button>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderFeaturedProducts() {
+      if (!featuredSection || !featuredGrid) return;
+      if (productsLoadState.status === 'loading' || productsLoadState.status === 'error') {
+        featuredSection.classList.add('hidden');
+        featuredGrid.innerHTML = '';
+        return;
+      }
+      const featured = (products || []).filter(product => Boolean(product.is_featured));
+      if (featured.length === 0) {
+        featuredSection.classList.add('hidden');
+        featuredGrid.innerHTML = '';
+        return;
+      }
+      featuredSection.classList.remove('hidden');
+      featuredGrid.innerHTML = featured.map(product => renderProductCard(product)).join('');
     }
 
     async function loadProducts({ reason = 'manual' } = {}) {
@@ -1922,6 +2086,7 @@
     function renderProducts({ reason = 'manual' } = {}) {
       console.log('[app] renderProducts called', { reason });
       console.log('[app] product render start', { reason, status: productsLoadState.status });
+      renderFeaturedProducts();
       const query = searchInput.value.toLowerCase();
       const selectedCategory = categoryFilter?.value || 'Todas';
       const selectedGender = genderFilter?.value || 'Todas';
@@ -1984,27 +2149,72 @@
           console.log('[app] product render end', { count: 0, filtered: true });
         return;
       }
-      productGrid.innerHTML = sorted.map(product => `
-        <article class="card">
-          <button class="product-image-button" data-id="${product.id}" aria-label="Ver detalle de ${product.title}">
-            <div class="image-wrap">
-              <img class="primary" src="${product.image_url || FALLBACK_IMAGE}" alt="${product.title}" onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}';" />
-            </div>
-          </button>
-          <div class="card-body">
-            <strong>${product.title}</strong>
-            <div class="price">$${Number(product.price).toFixed(2)}</div>
-            <div>${summarizeDescription(product.description)}</div>
-          </div>
-          <div class="card-cta">
-            <button class="btn primary card-cta-btn" data-action="add-to-cart" data-id="${product.id}" type="button">
-              Agregar al carrito
-            </button>
-          </div>
-        </article>
-      `).join('');
+      productGrid.innerHTML = sorted.map(product => renderProductCard(product)).join('');
       console.log('[app] products count rendered', { count: sorted.length, error: false });
       console.log('[app] product render end', { count: sorted.length, error: false });
+    }
+
+    function updateSliderDots(track, activeIndex) {
+      const dots = track.parentElement?.querySelectorAll('[data-slider-dot]');
+      if (!dots) return;
+      dots.forEach(dot => {
+        dot.classList.toggle('active', Number(dot.dataset.sliderIndex) === activeIndex);
+      });
+    }
+
+    function setSliderIndex(track, index) {
+      const count = Number(track.dataset.sliderCount || 0);
+      if (!count) return;
+      const clamped = Math.max(0, Math.min(index, count - 1));
+      track.dataset.sliderIndex = String(clamped);
+      const width = track.clientWidth;
+      if (width) {
+        track.scrollTo({ left: width * clamped, behavior: 'smooth' });
+      }
+      updateSliderDots(track, clamped);
+    }
+
+    function handleSliderScroll(event) {
+      const track = event.target.closest('[data-slider-track]');
+      if (!track) return;
+      const width = track.clientWidth;
+      if (!width) return;
+      const index = Math.round(track.scrollLeft / width);
+      if (index !== Number(track.dataset.sliderIndex || 0)) {
+        track.dataset.sliderIndex = String(index);
+        updateSliderDots(track, index);
+      }
+    }
+
+    const sliderPointerState = new WeakMap();
+    function handleSliderPointerDown(event) {
+      const track = event.target.closest('[data-slider-track]');
+      if (!track) return;
+      sliderPointerState.set(track, { x: event.clientX, y: event.clientY });
+      track.dataset.dragging = 'false';
+    }
+
+    function handleSliderPointerMove(event) {
+      const track = event.target.closest('[data-slider-track]');
+      if (!track) return;
+      const state = sliderPointerState.get(track);
+      if (!state) return;
+      const dx = event.clientX - state.x;
+      const dy = event.clientY - state.y;
+      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+        track.dataset.dragging = 'true';
+      }
+    }
+
+    function handleSliderPointerUp(event) {
+      const track = event.target.closest('[data-slider-track]');
+      if (!track) return;
+      sliderPointerState.delete(track);
+      if (track.dataset.dragging === 'true') {
+        setTimeout(() => {
+          track.dataset.dragging = 'false';
+        }, 0);
+      }
     }
 
     function renderStockRows(product) {
@@ -2130,6 +2340,9 @@
         categoryField.value = product.category || '';
         if (targetGenderField) {
           targetGenderField.value = product.target_gender || 'Todas';
+        }
+        if (featuredField) {
+          featuredField.checked = Boolean(product.is_featured);
         }
         existingImageUrl = product.image_url || '';
         existingExtraImageUrl1 = product.extra_image_url_1 || '';
@@ -2310,7 +2523,8 @@
         stock_by_size: getStockBySize(),
         size_measurements: sizeMeasurements,
         category: categoryValue || null,
-        target_gender: targetGenderValue || null
+        target_gender: targetGenderValue || null,
+        is_featured: Boolean(featuredField?.checked)
       };
 
       if (!payload.title || !payload.description || !payload.image_url) {
@@ -2344,7 +2558,34 @@
       setAdminMessage('Producto guardado correctamente.', 'success');
     });
 
-    productGrid.addEventListener('click', async (event) => {
+    function handleProductGridClick(event) {
+      const sliderAction = event.target.closest('[data-slider-action]');
+      if (sliderAction) {
+        event.preventDefault();
+        event.stopPropagation();
+        const track = sliderAction.closest('.image-wrap')?.querySelector('[data-slider-track]');
+        if (!track) return;
+        const current = Number(track.dataset.sliderIndex || 0);
+        const count = Number(track.dataset.sliderCount || 0);
+        if (!count) return;
+        const nextIndex = sliderAction.dataset.sliderAction === 'next'
+          ? (current + 1) % count
+          : (current - 1 + count) % count;
+        setSliderIndex(track, nextIndex);
+        return;
+      }
+
+      const sliderDot = event.target.closest('[data-slider-dot]');
+      if (sliderDot) {
+        event.preventDefault();
+        event.stopPropagation();
+        const track = sliderDot.closest('.image-wrap')?.querySelector('[data-slider-track]');
+        if (!track) return;
+        const index = Number(sliderDot.dataset.sliderIndex || 0);
+        setSliderIndex(track, index);
+        return;
+      }
+
       const quickButton = event.target.closest('button[data-action="add-to-cart"]');
       if (quickButton) {
         event.preventDefault();
@@ -2358,11 +2599,25 @@
 
       const button = event.target.closest('.product-image-button');
       if (!button) return;
+      if (event.target.closest('[data-slider-track][data-dragging="true"]')) return;
       const id = button.dataset.id;
       console.log('[app] product click', { id });
       const product = products.find(p => String(p.id) === String(id));
       showProductDetail(product);
-    });
+    }
+
+    productGrid.addEventListener('click', handleProductGridClick);
+    featuredGrid?.addEventListener('click', handleProductGridClick);
+    productGrid.addEventListener('scroll', handleSliderScroll, true);
+    featuredGrid?.addEventListener('scroll', handleSliderScroll, true);
+    productGrid.addEventListener('pointerdown', handleSliderPointerDown);
+    productGrid.addEventListener('pointermove', handleSliderPointerMove);
+    productGrid.addEventListener('pointerup', handleSliderPointerUp);
+    productGrid.addEventListener('pointercancel', handleSliderPointerUp);
+    featuredGrid?.addEventListener('pointerdown', handleSliderPointerDown);
+    featuredGrid?.addEventListener('pointermove', handleSliderPointerMove);
+    featuredGrid?.addEventListener('pointerup', handleSliderPointerUp);
+    featuredGrid?.addEventListener('pointercancel', handleSliderPointerUp);
 
     detailBack.addEventListener('click', () => setActiveView('store', { reason: 'detail-back' }));
 
@@ -2611,14 +2866,7 @@
     });
 
     function renderDetailGallery(product) {
-      const images = [
-        product?.image_url,
-        product?.extra_image_url_1,
-        product?.extra_image_url_2
-      ].filter(Boolean);
-      if (images.length === 0) {
-        images.push(FALLBACK_IMAGE);
-      }
+      const images = getProductImages(product, { includeFallback: true });
       detailGalleryTrack.innerHTML = images.map((url, index) => `
         <div class="detail-gallery-slide">
           <div class="detail-image-frame">
