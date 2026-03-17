@@ -704,16 +704,32 @@
       scroll-snap-align: start;
       overflow: hidden;
     }
-    .detail-image {
+    .detail-image-frame {
+      position: relative;
       width: 100%;
       height: 420px;
+      overflow: hidden;
+      background: #fafaf7;
+      cursor: zoom-in;
+    }
+    .detail-image {
+      width: 100%;
+      height: 100%;
       object-fit: cover;
       display: block;
-      transition: transform 0.3s ease;
     }
-    .detail-gallery-slide:hover .detail-image {
-      transform: scale(1.08);
-      cursor: zoom-in;
+    .detail-image-zoom {
+      position: absolute;
+      inset: 0;
+      background-repeat: no-repeat;
+      background-size: 220%;
+      background-position: 50% 50%;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease;
+    }
+    .detail-image-frame.is-zoomed .detail-image-zoom {
+      opacity: 1;
     }
     .detail-gallery-nav {
       position: absolute;
@@ -916,7 +932,7 @@
       }
       .filters-row .search { grid-template-columns: 1fr; }
       .detail-card { grid-template-columns: 1fr; }
-      .detail-image { height: 320px; }
+      .detail-image-frame { height: 320px; }
       .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 768px) {
@@ -938,6 +954,12 @@
       .brand {
         font-size: 0.98rem;
         letter-spacing: 0.05em;
+      }
+      .detail-image-frame {
+        cursor: default;
+      }
+      .detail-image-zoom {
+        display: none;
       }
       .pill {
         padding: 4px 8px;
@@ -1386,6 +1408,11 @@
     const cartEmpty = document.getElementById('cart-empty');
     const cartBack = document.getElementById('cart-back');
     const cartCount = document.getElementById('cart-count');
+    const desktopZoomQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+
+    let activeZoomFrame = null;
+    let activeZoomRaf = 0;
+    let pendingZoomPosition = null;
 
     const updateHeaderOffset = () => {
       const headerHeight = header?.offsetHeight || 0;
@@ -2045,9 +2072,13 @@
       activeProductId = null;
       detailGalleryTrack.innerHTML = `
         <div class="detail-gallery-slide">
-          <img class="detail-image" src="${FALLBACK_IMAGE}" alt="Imagen del producto" />
+          <div class="detail-image-frame">
+            <img class="detail-image" src="${FALLBACK_IMAGE}" alt="Imagen del producto" />
+            <div class="detail-image-zoom" style="background-image: url('${FALLBACK_IMAGE}');"></div>
+          </div>
         </div>
       `;
+      deactivateZoom();
       detailGalleryPrev.classList.add('hidden');
       detailGalleryNext.classList.add('hidden');
       detailTitle.textContent = 'Producto no disponible';
@@ -2505,6 +2536,80 @@
       updateQuantityLimit(stock);
     });
 
+    function setZoomPosition(frame, clientX, clientY) {
+      const zoomLayer = frame?.querySelector('.detail-image-zoom');
+      if (!zoomLayer) return;
+      const rect = frame.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
+      const y = Math.min(Math.max(clientY - rect.top, 0), rect.height);
+      const xPercent = (x / rect.width) * 100;
+      const yPercent = (y / rect.height) * 100;
+      zoomLayer.style.backgroundPosition = `${xPercent}% ${yPercent}%`;
+    }
+
+    function flushZoomPosition() {
+      activeZoomRaf = 0;
+      if (!pendingZoomPosition || !activeZoomFrame) return;
+      setZoomPosition(activeZoomFrame, pendingZoomPosition.x, pendingZoomPosition.y);
+    }
+
+    function queueZoomPosition(frame, clientX, clientY) {
+      activeZoomFrame = frame;
+      pendingZoomPosition = { x: clientX, y: clientY };
+      if (activeZoomRaf) return;
+      activeZoomRaf = requestAnimationFrame(flushZoomPosition);
+    }
+
+    function deactivateZoom(frame = activeZoomFrame) {
+      if (!frame) return;
+      frame.classList.remove('is-zoomed');
+      if (frame === activeZoomFrame) {
+        activeZoomFrame = null;
+        pendingZoomPosition = null;
+      }
+    }
+
+    detailGalleryTrack.addEventListener('mousemove', (event) => {
+      if (!desktopZoomQuery.matches) return;
+      const frame = event.target.closest('.detail-image-frame');
+      if (!frame || !detailGalleryTrack.contains(frame)) return;
+      if (activeZoomFrame && activeZoomFrame !== frame) {
+        deactivateZoom(activeZoomFrame);
+      }
+      if (!frame.classList.contains('is-zoomed')) {
+        frame.classList.add('is-zoomed');
+      }
+      queueZoomPosition(frame, event.clientX, event.clientY);
+    });
+
+    detailGalleryTrack.addEventListener('mouseenter', (event) => {
+      if (!desktopZoomQuery.matches) return;
+      const frame = event.target.closest('.detail-image-frame');
+      if (!frame || !detailGalleryTrack.contains(frame)) return;
+      frame.classList.add('is-zoomed');
+      setZoomPosition(frame, event.clientX, event.clientY);
+      activeZoomFrame = frame;
+    }, true);
+
+    detailGalleryTrack.addEventListener('mouseleave', () => {
+      deactivateZoom();
+    });
+
+    detailGalleryTrack.addEventListener('mouseout', (event) => {
+      const frame = event.target.closest('.detail-image-frame');
+      if (!frame || !detailGalleryTrack.contains(frame)) return;
+      const relatedTarget = event.relatedTarget;
+      if (relatedTarget instanceof Element && frame.contains(relatedTarget)) return;
+      deactivateZoom(frame);
+    });
+
+    desktopZoomQuery.addEventListener?.('change', (event) => {
+      if (!event.matches) {
+        deactivateZoom();
+      }
+    });
+
     function renderDetailGallery(product) {
       const images = [
         product?.image_url,
@@ -2516,9 +2621,13 @@
       }
       detailGalleryTrack.innerHTML = images.map((url, index) => `
         <div class="detail-gallery-slide">
-          <img class="detail-image" src="${url}" alt="Imagen del producto ${index + 1}" onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}';" />
+          <div class="detail-image-frame">
+            <img class="detail-image" src="${url}" alt="Imagen del producto ${index + 1}" onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}';this.nextElementSibling.style.backgroundImage=&quot;url('${FALLBACK_IMAGE}')&quot;;" />
+            <div class="detail-image-zoom" style="background-image: url('${url}');"></div>
+          </div>
         </div>
       `).join('');
+      deactivateZoom();
       const showNav = images.length > 1;
       detailGalleryPrev.classList.toggle('hidden', !showNav);
       detailGalleryNext.classList.toggle('hidden', !showNav);
