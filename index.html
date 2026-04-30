@@ -60,9 +60,11 @@
       gap: 12px;
     }
     .logo {
-      width: 44px;
-      height: 44px;
-      object-fit: cover;
+      width: 54px;
+      height: 30px;
+      object-fit: contain;
+      object-position: center;
+      display: block;
       border-radius: 8px;
       border: 1px solid var(--border);
     }
@@ -418,6 +420,7 @@
       color: #f8f8f4;
       text-decoration: none;
       overflow: hidden;
+      cursor: pointer;
       box-shadow: var(--shadow);
       transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
     }
@@ -427,11 +430,15 @@
       inset: 0;
       background: linear-gradient(0deg, rgba(5, 5, 5, 0.78), rgba(5, 5, 5, 0.25));
       pointer-events: none;
+      transition: background 0.25s ease;
     }
     .local-card:hover {
       transform: translateY(-4px);
       border-color: #2e2e2e;
       box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+    }
+    .local-card:hover::before {
+      background: linear-gradient(0deg, rgba(5, 5, 5, 0.84), rgba(5, 5, 5, 0.34));
     }
     .local-content {
       position: relative;
@@ -1014,8 +1021,8 @@
         gap: 8px;
       }
       .logo {
-        width: 36px;
-        height: 36px;
+        width: 46px;
+        height: 26px;
         border-radius: 6px;
       }
       .brand {
@@ -1268,7 +1275,7 @@
         <div class="section-title">Nuestro local</div>
         <a
           class="local-card"
-          href="https://maps.app.goo.gl/WH6f6YpUDKEm6yfH8"
+          href="https://www.google.com/maps/place/Ricardo+Balb%C3%ADn+150,+L6304+Santa+Rosa,+La+Pampa/@-36.6420386,-64.3220945,18.88z/data=!4m5!3m4!1s0x95c2ccdbd918c0e9:0xc4239b1ce8ec7a4d!8m2!3d-36.6421963!4d-64.3214315?entry=ttu&g_ep=EgoyMDI2MDQyNy4wIKXMDSoASAFQAw%3D%3D"
           target="_blank"
           rel="noopener noreferrer"
           style="background-image: url('https://images.unsplash.com/photo-1641440615796-5302077ce9fe?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1600');"
